@@ -4,37 +4,11 @@
 
 ---
 
-## 🌐 เว็บไซต์และระบบบริการ (Web Application Links)
+## 🌐 ระบบบริการและเอกสาร API (Application Links)
 
-- **Local Access (เครื่องตนเอง):** `http://localhost:8000`
+- **Web Application:** `http://localhost:8000`
 - **Interactive API Documentation (Swagger UI):** `http://localhost:8000/docs`
 - **ReDoc API Documentation:** `http://localhost:8000/redoc`
-
----
-
-## 🌍 วิธีเปิดให้คนอื่น / อาจารย์ เข้าใช้งานหน้าเว็บได้ (Public Access)
-
-หากต้องการส่งลิงก์ให้คนอื่นทดลองใช้งาน สามารถเลือกทำได้ 2 วิธีง่ายๆ ดังนี้:
-
-### วิธีที่ 1: สร้างลิงก์สาธารณะด้วย ngrok (แนะนำ - ง่ายที่สุด)
-เปิดให้คนอื่นเข้าใช้งานผ่านอินเทอร์เน็ตได้ทันทีจากเครื่องของคุณเอง:
-1. สั่งรันเซิร์ฟเวอร์ Backend ด้วยคำสั่ง:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
-2. เปิด Terminal อีกหน้าต่าง แล้วพิมพ์คำสั่ง ngrok:
-   ```bash
-   ngrok http 8000
-   ```
-3. ก๊อปปี้ลิงก์ `Forwarding` (เช่น `https://xxxx.ngrok-free.app`) ส่งให้ผู้อื่นเปิดใช้งานได้ทันที
-
-### วิธีที่ 2: เปิดให้เข้าใช้งานในวง Wi-Fi เดียวกัน (Local Network)
-1. รันเซิร์ฟเวอร์ด้วยคำสั่ง:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
-2. เช็ก IP เครื่องของคุณ (เช่น `192.168.1.50`)
-3. เครื่องอื่นที่ต่อ Wi-Fi เดียวกันสามารถเข้าผ่าน: `http://192.168.1.50:8000`
 
 ---
 
@@ -70,7 +44,7 @@
 
 2. **สั่งรันเซิร์ฟเวอร์ Backend:**
    ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn main:app --reload
    ```
 
 3. **เปิดใช้งานหน้าเว็บ:**
@@ -182,7 +156,7 @@ docker-compose up --build
 ## 📂 โครงสร้างโฟลเดอร์โปรเจกต์ (Project Structure)
 
 ```text
-passprint-ai/
+.
 ├── main.py              # โค้ด Backend API (FastAPI)
 ├── index.html            # โค้ด Frontend UI
 ├── requirements.txt      # รายชื่อไลบรารี Python
