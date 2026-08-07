@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>PassPrint AI - Single Page Print Fixer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* สไตล์สำหรับ Image Comparison Slider */
+        .slider-wrapper {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .slider-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #f8fafc;
+            pointer-events: none;
+        }
+
+        .img-before {
+            z-index: 10;
+        }
+
+        .img-after {
+            z-index: 20;
+            clip-path: inset(0 0 0 100%);
+            /* ซ่อนไว้ก่อนกดซ่อม */
+        }
+
+        .slider-bar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background-color: #0d9488;
+            z-index: 30;
+            cursor: ew-resize;
+            transform: translateX(-2px);
+        }
+
+        .slider-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background-color: #0d9488;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgb(0 0 0 / 0.3);
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 font-sans p-4 md:p-8 text-slate-100">
+    <div class="max-w-6xl mx-auto bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 overflow-hidden">
+
+        <!-- Header Section -->
+        <div class="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 text-center shadow-md">
+            <h1 class="text-3xl font-extrabold text-white tracking-wide">PassPrint AI</h1>
+            <p class="text-teal-100 text-sm mt-1">ระบบวิเคราะห์และเพิ่มความละเอียดไฟล์พิมพ์อัตโนมัติ
+                สำหรับร้านค้าออนไลน์ & SME</p>
+        </div>
+
+        <!-- Main Dashboard Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+
+            <!-- ด้านซ้าย: แผงควบคุมและฟังก์ชันการทำงาน -->
+            <div class="lg:col-span-5 space-y-6">
+
+                <!-- ฟังก์ชันที่ 1: อัปโหลดและจัดการไฟล์ภาพ -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5">
+                    <h2 class="text-base font-bold text-teal-400 mb-3 flex items-center gap-2">
+                        <span>📥</span> 1. จัดการชิ้นงาน/โลโก้ร้าน
+                    </h2>
+
+                    <!-- ส่วนที่ 1A: พื้นที่อัปโหลดครั้งแรก -->
+                    <div id="uploadDropzone"
+                        class="border-2 border-dashed border-slate-700 hover:border-teal-500/50 bg-slate-900/50 rounded-xl p-6 text-center transition-colors">
+                        <input type="file" id="fileInput" class="hidden" accept="image/*">
+                        <label for="fileInput" class="cursor-pointer block text-sm text-slate-400 hover:text-slate-200">
+                            <span class="block text-2xl mb-2">📷</span>
+                            <span class="font-semibold text-teal-400">คลิกที่นี่</span> เพื่อเลือกรูปภาพ
+                        </label>
+                    </div>
+
+                    <!-- ส่วนที่ 1B: แผงควบคุมกรณีอัปโหลดรูปแล้ว -->
+                    <div id="fileManageZone"
+                        class="hidden flex items-center justify-between bg-slate-900/60 border border-slate-700/60 p-3 rounded-xl">
+                        <div class="overflow-hidden mr-2">
+                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ไฟล์ที่เลือกอยู่:
+                            </p>
+                            <p id="fileNameText" class="text-xs text-slate-200 font-medium truncate">image.png</p>
+                        </div>
+                        <button onclick="triggerNewUpload()"
+                            class="bg-slate-800 hover:bg-slate-700 text-teal-400 border border-teal-500/30 text-xs font-bold py-2 px-3 rounded-lg shadow-sm transition-colors whitespace-nowrap">
+                            🔄 เปลี่ยนรูปใหม่
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ฟังก์ชันที่ 2: ผลการตรวจเช็กทางเทคนิค -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5">
+                    <h2 class="text-base font-bold text-teal-400 mb-3 flex items-center gap-2">
+                        <span>📋</span> 2. ผลการวิเคราะห์ไฟล์พิมพ์ (Pre-flight)
+                    </h2>
+                    <div id="analysisBox" class="text-xs space-y-2 text-slate-400">
+                        <p class="italic text-slate-500">กรุณาอัปโหลดรูปภาพเพื่อเริ่มการสแกนความสมบูรณ์ไฟล์...</p>
+                    </div>
+                </div>
+
+                <!-- ฟังก์ชันที่ 3: ปุ่มแอคชันและสรุปรายงานหลังซ่อม -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5">
+                    <h2 class="text-base font-bold text-teal-400 mb-3 flex items-center gap-2">
+                        <span>✨</span> 3. สั่งประมวลผลระบบหลังบ้าน
+                    </h2>
+                    <button id="btnHeal" disabled
+                        class="w-full bg-slate-700 text-slate-400 font-bold py-3 px-4 rounded-xl shadow cursor-not-allowed transition-all">
+                        กรุณาอัปโหลดไฟล์ภาพก่อน
+                    </button>
+
+                    <div id="statusList" class="hidden mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="p-2 bg-slate-900 border border-teal-500/20 rounded-lg">📊 <b>มิติพิกเซล:</b>
+                            เพิ่มข้อมูลภาพ 400% (Lanczos4)</div>
+                        <div class="p-2 bg-slate-900 border border-teal-500/20 rounded-lg">🎨 <b>รายละเอียด:</b>
+                            ดึงความคมชัดด้วย Unsharp Mask</div>
+                    </div>
+                </div>
+
+                <!-- ฟังก์ชันที่ 4: ชำระเงินและดาวน์โหลดไฟล์ส่งโรงพิมพ์ -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5">
+                    <h2 class="text-base font-bold text-teal-400 mb-3 flex items-center gap-2">
+                        <span>💰</span> 4. ช่องทางดาวน์โหลดไฟล์คุณภาพสูง
+                    </h2>
+                    <div id="paymentZone" class="text-center p-3 border border-slate-800 bg-slate-900/30 rounded-xl">
+                        <p class="text-xs text-slate-500 italic">ฟังก์ชันดาวน์โหลดจะเปิดหลังจากการซ่อมแซมเสร็จสิ้น</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ด้านขวา: ฝั่งแสดงผลเชิงอินเตอร์แอกทีฟ -->
+            <div class="lg:col-span-7 flex flex-col justify-between">
+                <div
+                    class="bg-slate-800/30 border border-slate-800 rounded-2xl p-4 h-full flex flex-col justify-between">
+
+                    <div class="mb-3 flex justify-between items-center text-xs">
+                        <span id="sliderHint" class="font-bold text-slate-400 flex items-center gap-1">
+                            📷 ตัวอย่างรูปภาพต้นฉบับ (กดปุ่มซ่อมแซมเพื่อเริ่มเปรียบเทียบ)
+                        </span>
+                    </div>
+
+                    <!-- พื้นที่ทำ Image Slider -->
+                    <div class="slider-wrapper mb-4" id="sliderContainer">
+                        <!-- ป้าย Before (เริ่มต้นแสดงเป็น รูปภาพต้นฉบับ) -->
+                        <div id="badgeBefore"
+                            class="absolute top-2 left-2 z-40 bg-slate-800/90 text-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-md shadow border border-slate-700">
+                            📷 รูปภาพต้นฉบับ</div>
+
+                        <!-- ป้าย After (ซ่อนไว้ก่อนกดซ่อม) -->
+                        <div id="badgeAfter"
+                            class="hidden absolute top-2 right-2 z-40 bg-emerald-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow">
+                            ✨ After (ซ่อมแล้ว)</div>
+
+                        <img id="imgBefore" class="slider-img img-before"
+                            src="https://dummyimage.com/600x450/1e293b/475569&text=Waiting+for+upload...">
+                        <img id="imgAfter" class="slider-img img-after"
+                            src="https://dummyimage.com/600x450/1e293b/475569&text=Waiting+for+upload...">
+
+                        <!-- แถบเลื่อน (ซ่อนไว้ก่อนกดซ่อม) -->
+                        <div class="slider-bar hidden" id="sliderBar">
+                            <div class="slider-button">↔</div>
+                        </div>
+                    </div>
+
+                    <!-- ตารางเมทริกซ์เทียบมิติพิกเซล -->
+                    <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 text-xs">
+                        <h4 class="font-bold text-slate-400 mb-2">📊 การเปรียบเทียบมิติข้อมูลไฟล์จริง (Real Metadata):
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div class="border-r border-slate-800">
+                                <span class="text-slate-500 block">มิติภาพก่อนเข้ากระบวนการ</span>
+                                <span id="metaBefore" class="font-mono text-red-400 font-bold">-</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">มิติภาพที่คำนวณใหม่จาก OpenCV</span>
+                                <span id="metaAfter" class="font-mono text-emerald-400 font-bold">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        const fileInput = document.getElementById('fileInput');
+        const btnHeal = document.getElementById('btnHeal');
+        let uploadedFile = null;
+        let isHealed = false; // สถานะเช็กว่าซ่อมหรือยัง
+
+        const container = document.getElementById('sliderContainer');
+        const afterImg = document.getElementById('imgAfter');
+        const sliderBar = document.getElementById('sliderBar');
+        const badgeBefore = document.getElementById('badgeBefore');
+        const badgeAfter = document.getElementById('badgeAfter');
+        const sliderHint = document.getElementById('sliderHint');
+
+        function moveSlider(xPos) {
+            if (!isHealed) return; // ถ้ายังไม่กดซ่อม จะลาก sliderไม่ได้
+
+            let rect = container.getBoundingClientRect();
+            let position = ((xPos - rect.left) / rect.width) * 100;
+            if (position < 0) position = 0;
+            if (position > 100) position = 100;
+
+            sliderBar.style.left = position + "%";
+            afterImg.style.clipPath = `inset(0 0 0 ${position}%)`;
+        }
+
+        container.addEventListener('mousemove', (e) => moveSlider(e.clientX));
+        container.addEventListener('touchmove', (e) => moveSlider(e.touches[0].clientX));
+
+        function triggerNewUpload() {
+            fileInput.click();
+        }
+
+        function resetUIState() {
+            isHealed = false;
+            document.getElementById('metaBefore').innerText = "-";
+            document.getElementById('metaAfter').innerText = "-";
+            document.getElementById('statusList').classList.add('hidden');
+            document.getElementById('paymentZone').innerHTML = `<p class="text-xs text-slate-500 italic">ฟังก์ชันดาวน์โหลดจะเปิดหลังจากการซ่อมแซมเสร็จสิ้น</p>`;
+
+            // ซ่อน Slider และป้าย After ตอนยังไม่ได้กดซ่อม
+            sliderBar.classList.add('hidden');
+            badgeAfter.classList.add('hidden');
+            badgeBefore.className = "absolute top-2 left-2 z-40 bg-slate-800/90 text-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-md shadow border border-slate-700";
+            badgeBefore.innerText = "📷 รูปภาพต้นฉบับ";
+            sliderHint.innerText = "📷 ตัวอย่างรูปภาพต้นฉบับ (กดปุ่มซ่อมแซมเพื่อเริ่มเปรียบเทียบ)";
+
+            afterImg.style.clipPath = `inset(0 0 0 100%)`; // ซ่อนรูป After สมบูรณ์
+        }
+
+        fileInput.addEventListener('change', async (e) => {
+            uploadedFile = e.target.files[0];
+            if (!uploadedFile) return;
+
+            document.getElementById('uploadDropzone').classList.add('hidden');
+            document.getElementById('fileManageZone').classList.remove('hidden');
+            document.getElementById('fileNameText').innerText = uploadedFile.name;
+
+            resetUIState();
+
+            const objectUrl = URL.createObjectURL(uploadedFile);
+            document.getElementById('imgBefore').src = objectUrl;
+
+            const tempImg = new Image();
+            tempImg.src = objectUrl;
+            tempImg.onload = function () {
+                document.getElementById('metaBefore').innerText = `${this.width} x ${this.height} px`;
+            };
+
+            const formData = new FormData();
+            formData.append("file", uploadedFile);
+            document.getElementById('analysisBox').innerHTML = `<p class="text-teal-400 animate-pulse">กำลังสแกนไฟล์ภาพ...</p>`;
+
+            try {
+                const res = await fetch(`${API_BASE}/analyze`, { method: "POST", body: formData });
+                const data = await res.json();
+
+                document.getElementById('analysisBox').innerHTML = data.issues.map(issue => {
+                    return `<div class="p-2 rounded bg-slate-900 border-l-2 ${issue.includes('🔴') ? 'border-red-500 text-red-300' : 'border-green-500 text-green-300'}">${issue}</div>`;
+                }).join('');
+
+                btnHeal.disabled = false;
+                btnHeal.innerText = "✨ คลิกเพื่อประมวลผลเพิ่มความคมชัดจริง";
+                btnHeal.className = "w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform hover:scale-[1.02] cursor-pointer";
+            } catch (err) {
+                alert("กรุณาตรวจสอบว่าเปิดรันเซิร์ฟเวอร์หลังบ้าน Python แล้ว");
+            }
+        });
+
+        btnHeal.addEventListener('click', async () => {
+            btnHeal.innerText = "⚙️ OpenCV กำลังคำนวณและเกลี่ยรายละเอียดพิกเซล...";
+            btnHeal.disabled = true;
+
+            const formData = new FormData();
+            formData.append("file", uploadedFile);
+
+            try {
+                const res = await fetch(`${API_BASE}/heal`, { method: "POST", body: formData });
+                const data = await res.json();
+
+                // ใส่รูปที่ซ่อมแล้วลงในฝั่ง After
+                document.getElementById('imgAfter').src = data.preview_url;
+
+                const tempImgAfter = new Image();
+                tempImgAfter.src = data.preview_url;
+                tempImgAfter.onload = function () {
+                    document.getElementById('metaAfter').innerText = `${this.width} x ${this.height} px (เพิ่มข้อมูลภาพ 4 เท่า)`;
+                };
+
+                // เปิดใช้งาน Slider และเปลี่ยนป้ายสถานะเปรียบเทียบ
+                isHealed = true;
+                sliderBar.classList.remove('hidden');
+                badgeAfter.classList.remove('hidden');
+                badgeBefore.className = "absolute top-2 left-2 z-40 bg-red-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow";
+                badgeBefore.innerText = "❌ Before (ต้นฉบับ)";
+                sliderHint.innerText = "↔️ เลื่อนแถบตรงกลาง เพื่อเปรียบเทียบความละเอียดชิ้นงานพิมพ์จริง";
+
+                sliderBar.style.left = "50%";
+                afterImg.style.clipPath = `inset(0 0 0 50%)`;
+
+                document.getElementById('statusList').classList.remove('hidden');
+                btnHeal.innerText = "✅ ซ่อมแซมและขยายเนื้อไฟล์สำเร็จ!";
+                btnHeal.className = "w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow cursor-not-allowed";
+
+                document.getElementById('paymentZone').innerHTML = `
+                    <button id="btnPay" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl shadow mb-2 transition-all">
+                        🎫 ชำระค่าบริการ 59 บาทเพื่อรับไฟล์งานพิมพ์
+                    </button>
+                `;
+
+                document.getElementById('btnPay').addEventListener('click', function () {
+                    document.getElementById('paymentZone').innerHTML = `
+                        <a href="${data.pdf_url}" download class="block text-center w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all">
+                            📄 ดาวน์โหลดไฟล์ความละเอียดสูง (.PDF สำหรับส่งโรงพิมพ์)
+                        </a>
+                    `;
+                });
+
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการประมวลผลหลังบ้าน");
+                btnHeal.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>
