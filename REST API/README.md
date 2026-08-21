@@ -1,6 +1,6 @@
-# 🖨️ PassPrint AI - Single Page Print Fixer
+# 🖨️ PassPrint AI - Engine v3.0 (SME Print Optimizer)
 
-ระบบวิเคราะห์และเพิ่มความละเอียดไฟล์พิมพ์อัตโนมัติด้วย AI และ Computer Vision สำหรับร้านค้าออนไลน์และธุรกิจ SME ช่วยตรวจเช็กสเปกไฟล์ (Pre-flight Analysis) และขยายความละเอียดภาพ 400% โดยไม่ทำให้ภาพแตก พร้อมแปลงเป็นไฟล์ PDF 300 DPI สำหรับส่งโรงพิมพ์ทันที
+ระบบวิเคราะห์ เพิ่มความละเอียดไฟล์พิมพ์ และจัดการผู้ใช้สำหรับธุรกิจ SME และร้านพิมพ์ออนไลน์ ด้วย AI และ Computer Vision ช่วยตรวจเช็กสเปกไฟล์เบื้องต้น (Pre-flight Analysis), ขยายความละเอียดภาพ 400% (4x Upscaling), เกลี่ย Noise และแปลงเป็นไฟล์ PDF ความละเอียด 300 DPI ที่พร้อมส่งโรงพิมพ์ได้ทันที
 
 ---
 
@@ -14,20 +14,22 @@
 
 ## ✨ ฟีเจอร์หลัก (Key Features)
 
-- 📥 **Image Upload & Management:** อัปโหลดและเปลี่ยนรูปภาพได้ง่าย
-- 📋 **Pre-flight Analysis:** สแกนตรวจสอบมิติพิกเซล ประเมินความหนาแน่น DPI และระบบสีของไฟล์เริ่มต้น
-- 🎨 **Smart Upscaling & Denoising:** 
-  - ลบเม็ดสเปกตรัม/Noise ด้วย **Bilateral Filter**
-  - ขยายข้อมูลภาพ 4 เท่าด้วย **INTER_CUBIC Interpolation**
-  - ดึงขอบภาพให้ชัดนุ่มนวลด้วย **Soft Sharpening**
+- 🔑 **Authentication & User Management:** ระบบสมัครสมาชิก, เข้าสู่ระบบ, เปลี่ยนรหัสผ่าน, ดูโปรไฟล์ และจัดการสิทธิ์ผู้ใช้ (CRUD Users)
+- 📋 **Auto Pre-flight Analysis:** สแกนตรวจสอบมิติพิกเซล ประเมินความหนาแน่น DPI และโหมดสีของภาพเริ่มต้นอัตโนมัติก่อนส่งพิมพ์
+- 🎨 **Smart AI Upscaling & Denoising:** 
+  - ลดเม็ดบีบอัด/Noise ด้วย **Bilateral Filter**
+  - ขยายข้อมูลภาพ 4 เท่าด้วย **INTER_LANCZOS4 Interpolation**
+  - ปรับความสดและมิติสีบนระบบ **HSV Color Space**
+  - ดึงขอบภาพให้คมนุ่มนวลด้วย **Unsharp Masking (Soft Sharpening)**
 - 🖼️ **Interactive Before/After Slider:** เปรียบเทียบความแตกต่างระหว่างภาพต้นฉบับกับภาพที่ซ่อมแซมแล้วแบบเรียลไทม์
-- 📄 **Print-Ready PDF Export:** แปลงภาพเป็นไฟล์ PDF ความละเอียดสูง (300 DPI Target) พร้อมส่งโรงพิมพ์
+- 📄 **Print-Ready PDF Export:** แปลงภาพเป็นไฟล์ PDF ความละเอียดสูง (300 DPI Target) พร้อมส่งเข้าเครื่องพิมพ์
+- 📂 **Cloud History Management:** เรียกดูรายการไฟล์ภาพ/PDF ที่ซ่อมแซมแล้วย้อนหลัง และจัดการลบไฟล์จากเซิร์ฟเวอร์ได้
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, FastAPI, OpenCV (`opencv-python-headless`), Pillow (PIL), Uvicorn
+- **Backend:** Python 3.12, FastAPI (v3.0.0), PostgreSQL, SQLAlchemy, OpenCV (`opencv-python-headless`), Pillow (PIL), NumPy, Uvicorn
 - **Frontend:** HTML5, Tailwind CSS (via CDN), JavaScript (Vanilla ES6)
 - **Containerization:** Docker, Docker Compose
 
@@ -35,132 +37,7 @@
 
 ## 🚀 วิธีการติดตั้งและรันใช้งาน (Getting Started)
 
-### ออปชันที่ 1: รันด้วย Python โดยตรง
-
-1. **ติดตั้ง Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **สั่งรันเซิร์ฟเวอร์ Backend:**
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-3. **เปิดใช้งานหน้าเว็บ:**
-   เปิดเบราว์เซอร์ไปที่ `http://127.0.0.1:8000` หรือ `http://localhost:8000`
-
----
-
-### ออปชันที่ 2: รันด้วย Docker Compose
+### ออปชันที่ 1: รันด้วย Docker Compose (แนะนำ)
 
 ```bash
 docker-compose up --build
-```
-ระบบจะสร้าง Container และเปิดให้บริการที่พอร์ต `8000` อัตโนมัติ
-
----
-
-## 📡 REST API Documentation
-
-### 1. Pre-flight Analysis (สแกนวิเคราะห์ภาพ)
-วิเคราะห์สเปกไฟล์รูปภาพเบื้องต้นก่อนทำการซ่อมแซม
-
-* **Endpoint:** `POST /analyze`
-* **Content-Type:** `multipart/form-data`
-* **Body Parameters:**
-  * `file`: (UploadFile) ไฟล์รูปภาพที่ต้องการสแกน
-* **Response Example (200 OK):**
-  ```json
-  {
-    "status": "success",
-    "issues": [
-      "🔴 มิติภาพเริ่มต้นค่อนข้างเล็ก (600 x 450 px) เสี่ยงต่อการแตกเมื่อนำไปพิมพ์จริง",
-      "🔴 ความหนาแน่นพิกเซลต่ำ (ประมาณ 72-150 DPI) จำเป็นต้องเกลี่ยและเพิ่มข้อมูลภาพ 400%",
-      "🟢 โครงสร้างสี RGB สมบูรณ์ พร้อมสำหรับอัลกอริทึมดึงรายละเอียดพิกเซล"
-    ]
-  }
-  ```
-
----
-
-### 2. Heal & Upscale Image (ประมวลผลเพิ่มความคมชัด)
-ลบ Noise/เม็ดแตก, ขยายภาพ 400% และสร้างไฟล์ PDF 300 DPI
-
-* **Endpoint:** `POST /heal` (หรือ `POST /process`)
-* **Content-Type:** `multipart/form-data`
-* **Body Parameters:**
-  * `file`: (UploadFile) ไฟล์รูปภาพที่ต้องการประมวลผล
-* **Response Example (200 OK):**
-  ```json
-  {
-    "status": "success",
-    "message": "repaired and upscaled successfully",
-    "preview_url": "/fixed_files/healed_sample.png",
-    "pdf_url": "/fixed_files/print_ready_sample.pdf",
-    "original_resolution": "600 x 450 px",
-    "healed_resolution": "2400 x 1800 px"
-  }
-  ```
-
----
-
-### 3. List Processed Images (เรียกดูรายการไฟล์ทั้งหมด)
-ดึงรายชื่อไฟล์ภาพและ PDF ที่ประมวลผลแล้วในระบบ
-
-* **Endpoint:** `GET /api/v1/images`
-* **Response Example (200 OK):**
-  ```json
-  {
-    "status": "success",
-    "total_files": 2,
-    "files": [
-      "/fixed_files/healed_sample.png",
-      "/fixed_files/print_ready_sample.pdf"
-    ]
-  }
-  ```
-
----
-
-### 4. Delete Processed Image (ลบไฟล์ผลลัพธ์)
-ลบไฟล์ที่ประมวลผลแล้วออกจากเซิร์ฟเวอร์
-
-* **Endpoint:** `DELETE /api/v1/images/{filename}`
-* **Response Example (200 OK):**
-  ```json
-  {
-    "status": "success",
-    "message": "Deleted healed_sample.png"
-  }
-  ```
-
----
-
-### 5. Get Current User Profile (ดึงข้อมูลผู้ใช้)
-แสดงข้อมูลจำลองสิทธิ์การใช้งานระบบ PassPrint AI
-
-* **Endpoint:** `GET /users/me`
-* **Response Example (200 OK):**
-  ```json
-  {
-    "user_id": "usr_sme_889",
-    "username": "passprint_official",
-    "package": "PassPrint Pro",
-    "status": "Active"
-  }
-  ```
-
----
-
-## 📂 โครงสร้างโฟลเดอร์โปรเจกต์ (Project Structure)
-
-```text
-.
-├── main.py              # โค้ด Backend API (FastAPI)
-├── index.html            # โค้ด Frontend UI
-├── requirements.txt      # รายชื่อไลบรารี Python
-├── Dockerfile            # คอนฟิกการสร้าง Docker Container
-├── docker-compose.yml    # คอนฟิกการรันบริการ Docker
-└── README.md             # เอกสารอธิบายโปรเจกต์
-```
