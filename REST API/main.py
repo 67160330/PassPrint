@@ -1,5 +1,6 @@
 import os
 import io
+import uuid
 import cv2
 import numpy as np
 from PIL import Image
@@ -111,7 +112,6 @@ async def heal_image(file: UploadFile = File(...)):
         h, w = img.shape[:2]
 
         # Step 1: เกลี่ยรอยแตกและ Noise เดิมของภาพออกก่อน (Bilateral Filter)
-        # ช่วยให้ภาพเนียนขึ้นโดยไม่ทำให้ขอบวัตถุหลักเบลอ
         denoised = cv2.bilateralFilter(img, d=5, sigmaColor=30, sigmaSpace=30)
 
         # Step 2: ขยายมิติภาพ 4 เท่า ด้วย INTER_CUBIC (ลดขอบหยักและรอยแตก)
@@ -121,9 +121,11 @@ async def heal_image(file: UploadFile = File(...)):
         gaussian_blur = cv2.GaussianBlur(upscaled, (0, 0), sigmaX=1.0)
         sharpened = cv2.addWeighted(upscaled, 1.15, gaussian_blur, -0.15, 0)
 
+        # ✅ สุ่ม ID ภาษาอังกฤษ (UUID) สำหรับชื่อไฟล์ ป้องกันปัญหาภาษาไทยติด Error 404
+        unique_id = uuid.uuid4().hex[:8]
+
         # บันทึกไฟล์รูปภาพสำหรับพรีวิวบน Slider (PNG)
-        base_name = os.path.splitext(file.filename)[0]
-        preview_filename = f"healed_{base_name}.png"
+        preview_filename = f"healed_{unique_id}.png"
         preview_path = os.path.join(OUTPUT_DIR, preview_filename)
         cv2.imwrite(preview_path, sharpened)
 
@@ -131,7 +133,7 @@ async def heal_image(file: UploadFile = File(...)):
         sharpened_rgb = cv2.cvtColor(sharpened, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(sharpened_rgb)
         
-        pdf_filename = f"print_ready_{base_name}.pdf"
+        pdf_filename = f"print_ready_{unique_id}.pdf"
         pdf_path = os.path.join(OUTPUT_DIR, pdf_filename)
         pil_img.save(pdf_path, "PDF", resolution=300.0)
 
