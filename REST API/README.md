@@ -9,6 +9,7 @@
 - **Web Application:** `http://localhost:8000`
 - **Interactive API Documentation (Swagger UI):** `http://localhost:8000/docs`
 - **ReDoc API Documentation:** `http://localhost:8000/redoc`
+- **สไลด์:** `https://canva.link/7btqbrr35zko3px`
 
 ---
 
