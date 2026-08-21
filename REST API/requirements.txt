@@ -5,3 +5,5 @@ opencv-python-headless
 numpy
 pydantic
 pillow
+psycopg2-binary
+sqlalchemy
