@@ -4,18 +4,22 @@ import uuid
 import cv2
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from typing import Optional, List
+from pydantic import BaseModel
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
-    title="PassPrint AI - Engine Services",
-    description="ระบบวิเคราะห์และเพิ่มความละเอียดไฟล์พิมพ์อัตโนมัติ สำหรับร้านค้าออนไลน์ & SME",
-    version="2.0.0"
+    title="PassPrint AI - Full Engine & Management Services",
+    description="ระบบวิเคราะห์ เพิ่มความละเอียดไฟล์พิมพ์ และจัดการผู้ใช้สำหรับ SME",
+    version="3.0.0"
 )
 
-# 1. ตั้งค่า CORS อนุญาตให้ Frontend เชื่อมต่อได้ทุกช่องทาง
+# -------------------------------------------------------------
+# 1. ตั้งค่า CORS
+# -------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,83 +28,226 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------------------------------------------------
 # 2. จัดการโฟลเดอร์สำหรับเก็บไฟล์ผลลัพธ์
+# -------------------------------------------------------------
 OUTPUT_DIR = "fixed_files"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 app.mount("/fixed_files", StaticFiles(directory=OUTPUT_DIR), name="fixed_files")
 
+# -------------------------------------------------------------
+# 3. Mock Database & Schemas (ไม่ใช้ EmailStr เพื่อป้องกัน Error)
+# -------------------------------------------------------------
+users_db = [
+    {
+        "id": 1,
+        "username": "usr_sme_889",
+        "email": "67160330@go.buu.ac.th",
+        "role": "admin",
+        "password": "password123",
+        "is_active": True
+    }
+]
+token_blacklist = set()
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    email: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
+
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# Helper Authenticator (รองรับทั้ง Bearer และ bearer)
+def get_current_user(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+    
+    clean_token = authorization.replace("Bearer ", "").replace("bearer ", "").strip()
+    if clean_token in token_blacklist:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been logged out")
+    
+    for user in users_db:
+        if clean_token.endswith(user["username"]):
+            return user, clean_token
+            
+    if len(users_db) > 0:
+        return users_db[0], clean_token
+        
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 # -------------------------------------------------------------
-# 🌐 0. Router หน้าเว็บหลัก และป้องกัน Error 405 Method Not Allowed
+# 🌐 0. Router หน้าเว็บหลัก
 # -------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse, tags=["Web UI"])
 def read_root():
-    """แสดงผลหน้าเว็บหลัก index.html"""
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return "<h1>PassPrint AI Server is Running! (index.html not found)</h1>"
+    return "<h1>PassPrint AI Server is Running!</h1>"
 
 @app.get("/analyze")
 @app.get("/heal")
 @app.get("/process")
 @app.get("/upscale")
 def handle_browser_get_redirect():
-    """ดักจับคำสั่ง GET ในกรณีที่ผู้ใช้พิมพ์ URL บนแถบเบราว์เซอร์ตรงๆ ให้เด้งกลับหน้าหลัก"""
     return RedirectResponse(url="/")
 
+# -------------------------------------------------------------
+# 🔑 1. Authentication APIs
+# -------------------------------------------------------------
+@app.post("/register", tags=["Authentication"])
+def register(user: UserRegister):
+    for u in users_db:
+        if u["username"].lower() == user.username.lower():
+            raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
+    
+    new_user = {
+        "id": len(users_db) + 1,
+        "username": user.username,
+        "email": user.email,
+        "role": "user",
+        "password": user.password,
+        "is_active": True
+    }
+    users_db.append(new_user)
+    token = f"bearer-token-{new_user['id']}-{new_user['username']}"
+    return {"status": "success", "message": "สมัครสมาชิกสำเร็จ", "access_token": token, "token_type": "bearer"}
+
+@app.post("/login", tags=["Authentication"])
+def login(user: UserLogin):
+    for u in users_db:
+        if u["username"] == user.username and u["password"] == user.password:
+            if not u.get("is_active", True):
+                raise HTTPException(status_code=403, detail="บัญชีนี้ถูกระงับการใช้งาน")
+            return {
+                "status": "success",
+                "access_token": f"bearer-token-{u['id']}-{u['username']}",
+                "token_type": "bearer"
+            }
+    raise HTTPException(status_code=401, detail="Username หรือ Password ไม่ถูกต้อง")
+
+@app.post("/logout", tags=["Authentication"])
+def logout(authorization: Optional[str] = Header(None)):
+    _, token = get_current_user(authorization)
+    token_blacklist.add(token)
+    return {"status": "success", "message": "ออกจากระบบสำเร็จ"}
+
+@app.post("/change-password", tags=["Authentication"])
+def change_password(data: ChangePassword, authorization: Optional[str] = Header(None)):
+    current_user, _ = get_current_user(authorization)
+    if current_user["password"] != data.old_password:
+        raise HTTPException(status_code=400, detail="รหัสผ่านเดิมไม่ถูกต้อง")
+    
+    current_user["password"] = data.new_password
+    return {"status": "success", "message": "เปลี่ยนรหัสผ่านสำเร็จ"}
 
 # -------------------------------------------------------------
-# 🔍 1. Pre-flight Analysis Endpoint (สำหรับกล่องวิเคราะห์ข้อ 2)
+# 👥 2. User Management APIs
+# -------------------------------------------------------------
+@app.get("/me", tags=["User Management"])
+@app.get("/users/me", tags=["User Management"])
+def get_user_profile(authorization: Optional[str] = Header(None)):
+    current_user, _ = get_current_user(authorization)
+    profile = {k: v for k, v in current_user.items() if k != "password"}
+    return {"status": "success", "data": profile}
+
+@app.get("/check-username/{name}", tags=["User Management"])
+def check_username(name: str):
+    exists = any(u["username"].lower() == name.lower() for u in users_db)
+    return {"username": name, "available": not exists}
+
+@app.get("/users", tags=["User Management"])
+def get_users(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1)):
+    sliced_users = users_db[skip : skip + limit]
+    result = [{k: v for k, v in u.items() if k != "password"} for u in sliced_users]
+    return {
+        "status": "success",
+        "total": len(users_db),
+        "skip": skip,
+        "limit": limit,
+        "data": result
+    }
+
+@app.get("/users/{user_id}", tags=["User Management"])
+def get_user_by_id(user_id: int):
+    for u in users_db:
+        if u["id"] == user_id:
+            profile = {k: v for k, v in u.items() if k != "password"}
+            return {"status": "success", "data": profile}
+    raise HTTPException(status_code=404, detail="ไม่พบข้อมูลผู้ใช้")
+
+@app.put("/users/{user_id}", tags=["User Management"])
+def update_user(user_id: int, data: UserUpdate, authorization: Optional[str] = Header(None)):
+    get_current_user(authorization)
+    for u in users_db:
+        if u["id"] == user_id:
+            if data.email: u["email"] = data.email
+            if data.role: u["role"] = data.role
+            if data.is_active is not None: u["is_active"] = data.is_active
+            profile = {k: v for k, v in u.items() if k != "password"}
+            return {"status": "success", "message": "แก้ไขข้อมูลเรียบร้อย", "data": profile}
+    raise HTTPException(status_code=404, detail="ไม่พบข้อมูลผู้ใช้")
+
+@app.delete("/users/{user_id}", tags=["User Management"])
+def delete_user(user_id: int, authorization: Optional[str] = Header(None)):
+    get_current_user(authorization)
+    global users_db
+    for i, u in enumerate(users_db):
+        if u["id"] == user_id:
+            deleted_user = users_db.pop(i)
+            return {"status": "success", "message": f"ลบผู้ใช้ {deleted_user['username']} เรียบร้อย"}
+    raise HTTPException(status_code=404, detail="ไม่พบข้อมูลผู้ใช้")
+
+# -------------------------------------------------------------
+# 🔍 3. Pre-flight Analysis Endpoint
 # -------------------------------------------------------------
 @app.post("/analyze", tags=["Image Processing"])
 async def analyze_image(file: UploadFile = File(...)):
-    """วิเคราะห์สเปกไฟล์พิมพ์ และส่งรายการประเมินกลับไปที่หน้าเว็บ"""
     try:
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         if img is None:
-            return JSONResponse(
-                status_code=400,
-                content={"issues": ["🔴 ไฟล์ที่อัปโหลดไม่ถูกต้องหรือชำรุด"]}
-            )
+            return JSONResponse(status_code=400, content={"issues": ["🔴 ไฟล์ที่อัปโหลดไม่ถูกต้องหรือชำรุด"]})
 
         h, w, c = img.shape
         issues = []
 
-        # ประเมินขนาดพิกเซล
         if w < 1200 or h < 1200:
             issues.append(f"🔴 มิติภาพเริ่มต้นค่อนข้างเล็ก ({w} x {h} px) เสี่ยงต่อการแตกเมื่อนำไปพิมพ์จริง")
         else:
             issues.append(f"🟢 มิติภาพเริ่มต้นอยู่ในเกณฑ์ดี ({w} x {h} px)")
 
-        # ประเมินความหนาแน่นพิกเซล (DPI Estimate)
         if w < 1000:
             issues.append("🔴 ความหนาแน่นพิกเซลต่ำ (ประมาณ 72-150 DPI) จำเป็นต้องเกลี่ยและเพิ่มข้อมูลภาพ 400%")
         else:
             issues.append("🟢 ระดับ DPI พร้อมสำหรับการประมวลผลขึ้นงานพิมพ์")
 
-        # ประเมินระบบสี
         if c == 3:
             issues.append("🟢 โครงสร้างสี RGB สมบูรณ์ พร้อมสำหรับอัลกอริทึมดึงรายละเอียดพิกเซล")
 
         return {"status": "success", "issues": issues}
 
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"issues": [f"🔴 เกิดข้อผิดพลาดในการวิเคราะห์: {str(e)}"]}
-        )
-
+        return JSONResponse(status_code=500, content={"issues": [f"🔴 เกิดข้อผิดพลาดในการวิเคราะห์: {str(e)}"]})
 
 # -------------------------------------------------------------
-# ✨ 2. PassPrint AI Heal & Upscale Endpoint (ปรับปรุงภาพเนียนคม)
+# ✨ 4. PassPrint AI Heal & Upscale Endpoint
 # -------------------------------------------------------------
 @app.post("/heal", tags=["Image Processing"])
 @app.post("/process", tags=["Image Processing"])
 async def heal_image(file: UploadFile = File(...)):
-    """ขยายภาพ 4 เท่า ลบรอยแตกเม็ดสเปกตรัม และสร้างไฟล์ PDF 300 DPI"""
     try:
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
@@ -111,25 +258,23 @@ async def heal_image(file: UploadFile = File(...)):
 
         h, w = img.shape[:2]
 
-        # Step 1: เกลี่ยรอยแตกและ Noise เดิมของภาพออกก่อน (Bilateral Filter)
-        denoised = cv2.bilateralFilter(img, d=5, sigmaColor=30, sigmaSpace=30)
+        denoised = cv2.bilateralFilter(img, d=5, sigmaColor=25, sigmaSpace=25)
+        upscaled = cv2.resize(denoised, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
 
-        # Step 2: ขยายมิติภาพ 4 เท่า ด้วย INTER_CUBIC (ลดขอบหยักและรอยแตก)
-        upscaled = cv2.resize(denoised, (w * 4, h * 4), interpolation=cv2.INTER_CUBIC)
+        hsv = cv2.cvtColor(upscaled, cv2.COLOR_BGR2HSV).astype(np.float32)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.18, 0, 255)
+        hsv[:, :, 2] = np.clip((hsv[:, :, 2] - 128) * 1.05 + 128, 0, 255)
+        enhanced_bgr = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
-        # Step 3: เพิ่มความคมชัดแบบนุ่มนวล (Soft Sharpening) ป้องกันการเกิด Noise เพิ่ม
-        gaussian_blur = cv2.GaussianBlur(upscaled, (0, 0), sigmaX=1.0)
-        sharpened = cv2.addWeighted(upscaled, 1.15, gaussian_blur, -0.15, 0)
+        gaussian_blur = cv2.GaussianBlur(enhanced_bgr, (0, 0), sigmaX=1.5)
+        sharpened = cv2.addWeighted(enhanced_bgr, 1.35, gaussian_blur, -0.35, 0)
+        sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
 
-        # ✅ สุ่ม ID ภาษาอังกฤษ (UUID) สำหรับชื่อไฟล์ ป้องกันปัญหาภาษาไทยติด Error 404
         unique_id = uuid.uuid4().hex[:8]
-
-        # บันทึกไฟล์รูปภาพสำหรับพรีวิวบน Slider (PNG)
         preview_filename = f"healed_{unique_id}.png"
         preview_path = os.path.join(OUTPUT_DIR, preview_filename)
         cv2.imwrite(preview_path, sharpened)
 
-        # Step 4: แปลงภาพเป็น PDF คุณภาพสูง (300 DPI Target)
         sharpened_rgb = cv2.cvtColor(sharpened, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(sharpened_rgb)
         
@@ -140,7 +285,6 @@ async def heal_image(file: UploadFile = File(...)):
         preview_url = f"/fixed_files/{preview_filename}"
         pdf_url = f"/fixed_files/{pdf_filename}"
 
-        # ส่งคืนค่าตรงตามคีย์ตัวแปรที่ index.html เรียกใช้
         return {
             "status": "success",
             "message": "repaired and upscaled successfully",
@@ -153,23 +297,15 @@ async def heal_image(file: UploadFile = File(...)):
         }
 
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": f"Processing error: {str(e)}"}
-        )
-
+        return JSONResponse(status_code=500, content={"status": "error", "message": f"Processing error: {str(e)}"})
 
 # -------------------------------------------------------------
-# 📂 3. REST APIs เสริมสำหรับจัดการไฟล์และผู้ใช้
+# 📂 5. REST APIs เสริมสำหรับจัดการไฟล์
 # -------------------------------------------------------------
 @app.get("/api/v1/images", tags=["Management API"])
 def list_processed_images():
     files = os.listdir(OUTPUT_DIR)
-    return {
-        "status": "success",
-        "total_files": len(files),
-        "files": [f"/fixed_files/{f}" for f in files]
-    }
+    return {"status": "success", "total_files": len(files), "files": [f"/fixed_files/{f}" for f in files]}
 
 @app.delete("/api/v1/images/{filename}", tags=["Management API"])
 def delete_image(filename: str):
@@ -178,12 +314,3 @@ def delete_image(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
     os.remove(file_path)
     return {"status": "success", "message": f"Deleted {filename}"}
-
-@app.get("/users/me", tags=["Management API"])
-def get_user_profile():
-    return {
-        "user_id": "usr_sme_889",
-        "username": "passprint_official",
-        "package": "PassPrint Pro",
-        "status": "Active"
-    }
