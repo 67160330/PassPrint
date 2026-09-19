@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # 1. FastAPI REST API Web Service
   web:
     build: .
     container_name: print_ai_app
@@ -9,15 +6,13 @@ services:
       - "8000:8000"
     volumes:
       - ./fixed_files:/app/fixed_files
-    environment:
-      - DATABASE_URL=postgresql://postgres:secretpassword@db:5432/print_ai_db
-      - JWT_SECRET_KEY=your_super_secret_jwt_key
+    env_file:
+      - .env
     depends_on:
       db:
-        condition: service_healthy # รอให้ DB พร้อมทำงานจริงๆ ก่อนเริ่มแอป
+        condition: service_healthy
     restart: always
 
-  # 2. Database Service (PostgreSQL)
   db:
     image: postgres:15-alpine
     container_name: print_ai_db
@@ -29,14 +24,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck: # เช็กสถานะ DB ว่าพร้อมรับ Connection หรือยัง
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d print_ai_db"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: always
 
-  # 3. Web UI สำหรับจัดการ DB (pgAdmin)
   pgadmin:
     image: dpage/pgadmin4
     container_name: print_ai_pgadmin
@@ -46,7 +40,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin # บันทึก Session และ Server config ของ pgAdmin ถาวร
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       db:
         condition: service_healthy
@@ -54,4 +48,4 @@ services:
 
 volumes:
   postgres_data:
-  pgadmin_data: # สร้าง Volume สำหรับเก็บข้อมูล pgAdmin
+  pgadmin_data:

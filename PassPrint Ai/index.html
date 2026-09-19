@@ -1,791 +1,810 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PassPrint AI - ระบบขยายไฟล์พิมพ์สำหรับ SME</title>
+    <title>PassPrint - SME Print Optimizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #0d1117;
-            color: #e6edf3;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .card-glass {
-            background: rgba(22, 27, 34, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid #30363d;
-        }
-
-        .btn-gradient {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .btn-gradient:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        }
-
-        .slider-input::-webkit-slider-thumb {
-            appearance: none;
-            width: 40px;
-            height: 40px;
-            cursor: ew-resize;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #161b22;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #30363d;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #10b981;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Kanit', sans-serif; }
     </style>
 </head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
 
-<body class="min-h-screen flex flex-col bg-[#0d1117] text-[#e6edf3]">
-
-    <!-- 🔒 1. หน้าล็อกอิน -->
-    <div id="loginView" class="fixed inset-0 z-50 bg-[#0d1117] flex items-center justify-center p-4 overflow-y-auto">
-        <div class="card-glass w-full max-w-md rounded-2xl p-8 relative shadow-2xl border border-gray-800 my-auto">
-
-            <div class="text-center mb-6">
-                <div
-                    class="w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3 shadow-lg shadow-emerald-900/40">
-                    P</div>
-                <h1 class="text-2xl font-bold text-white tracking-wide">PassPrint <span
-                        class="text-emerald-400">AI</span></h1>
-                <p class="text-xs text-gray-400 mt-1">ระบบขยายไฟล์พิมพ์สำหรับ SME (กรุณาเข้าสู่ระบบ)</p>
+    <!-- NAVBAR -->
+    <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="window.location.reload()">
+            <div class="bg-blue-600 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-sliders text-xl"></i>
             </div>
-
-            <!-- Tab Switcher -->
-            <div class="flex border-b border-gray-800 mb-6">
-                <button id="tabLoginBtn" onclick="switchAuthTab('login')"
-                    class="flex-1 pb-3 font-semibold text-emerald-400 border-b-2 border-emerald-400 text-sm transition">เข้าสู่ระบบ</button>
-                <button id="tabRegBtn" onclick="switchAuthTab('register')"
-                    class="flex-1 pb-3 font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-200 text-sm transition">สมัครสมาชิก</button>
-            </div>
-
-            <!-- Login Form -->
-            <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4" autocomplete="off">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Username / ชื่อผู้ใช้</label>
-                    <input type="text" id="loginUsername" required
-                        class="w-full bg-gray-900/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-                        placeholder="กรอกชื่อผู้ใช้">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Password / รหัสผ่าน</label>
-                    <input type="password" id="loginPassword" required
-                        class="w-full bg-gray-900/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-                        placeholder="กรอกรหัสผ่าน">
-                </div>
-                <button type="submit" id="btnLoginSubmit"
-                    class="w-full btn-gradient py-3 rounded-xl text-white font-semibold shadow-lg text-sm transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
-                </button>
-            </form>
-
-            <!-- Register Form -->
-            <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="space-y-4 hidden" autocomplete="off">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Username / ชื่อผู้ใช้</label>
-                    <input type="text" id="regUsername" required
-                        class="w-full bg-gray-900/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-                        placeholder="ตั้งชื่อผู้ใช้">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Email / อีเมล</label>
-                    <input type="email" id="regEmail" required
-                        class="w-full bg-gray-900/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-                        placeholder="name@example.com">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Password / รหัสผ่าน</label>
-                    <input type="password" id="regPassword" required
-                        class="w-full bg-gray-900/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-                        placeholder="ตั้งรหัสผ่าน">
-                </div>
-                <button type="submit" id="btnRegSubmit"
-                    class="w-full btn-gradient py-3 rounded-xl text-white font-semibold shadow-lg text-sm transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-user-plus"></i> ยืนยันสมัครสมาชิก
-                </button>
-            </form>
-
-            <!-- Alert Box -->
-            <div id="authAlert"
-                class="hidden mt-4 p-3 bg-red-950/60 border border-red-800 text-red-300 text-xs rounded-xl flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-red-400"></i>
-                <span id="authAlertText"></span>
+            <div>
+                <span class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">PassPrint</span>
+                <span class="text-xs text-slate-500 block -mt-1">SME Print Optimizer v4.0</span>
             </div>
         </div>
-    </div>
 
-    <!-- 🖥️ 2. หน้าทำงานหลัก -->
-    <div id="appView" class="hidden flex-1 flex flex-col min-h-screen">
-        <header class="border-b border-gray-800 bg-gray-900/50 sticky top-0 z-40 backdrop-blur-md">
-            <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-900/30">
-                        P</div>
-                    <div>
-                        <h1 class="text-xl font-bold tracking-wide text-white">PassPrint <span
-                                class="text-emerald-400">AI</span></h1>
-                        <p class="text-xs text-gray-400">Engine v3.1 - SME Print Optimizer</p>
+        <div id="authSection" class="flex items-center space-x-3">
+            <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">เข้าสู่ระบบ</button>
+            <button onclick="openAuthModal('register')" class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-lg shadow-blue-600/30">สมัครสมาชิก</button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-4xl mx-auto w-full px-4 py-8 flex-1">
+        
+        <!-- HEADER TITLE -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">ยกระดับไฟล์งานพิมพ์สำหรับ SME</h1>
+            <p class="text-slate-400 text-sm md:text-base">เพิ่มความละเอียด 400% (4x) • ลบ Noise • ปรับโปรไฟล์สีโรงพิมพ์ 300 DPI</p>
+        </div>
+
+        <!-- UPLOAD CARD -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl mb-6">
+            <div id="dropZone" onclick="document.getElementById('fileInput').click()" 
+                 class="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-8 text-center bg-slate-950/50 hover:bg-slate-900/50 transition cursor-pointer group">
+                <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFileSelect(event)">
+                <div class="w-16 h-16 bg-blue-500/10 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                </div>
+                <p class="text-lg font-medium text-slate-200">คลิก หรือ ลากไฟล์รูปภาพมาวางที่นี่</p>
+                <p class="text-xs text-slate-500 mt-1">รองรับ JPG, JPEG, PNG (ขนาดสูงสุด 10 MB)</p>
+            </div>
+
+            <!-- ANALYSIS & MODE SELECTION -->
+            <div id="analysisSection" class="mt-6 hidden space-y-5">
+                <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+                    <h3 class="text-sm font-semibold text-blue-400 flex items-center mb-2">
+                        <i class="fa-solid fa-magnifying-glass-chart mr-2"></i> ผลการวิเคราะห์ไฟล์:
+                    </h3>
+                    <ul id="analysisList" class="space-y-1 text-sm text-slate-300"></ul>
+                </div>
+
+                <!-- Color Mode Options -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">เลือกโหมดการปรับแต่งรูปภาพ:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="relative flex items-start p-4 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-950 cursor-pointer transition group">
+                            <input type="radio" name="colorMode" value="false" checked class="mt-1 text-blue-600 focus:ring-blue-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-semibold text-slate-200 group-hover:text-blue-400">🎯 คมชัดอย่างเดียว (คงสีเดิม)</span>
+                                <span class="block text-xs text-slate-400 mt-0.5">ขยาย 4x + เพิ่มความคมชัด โดยไม่แตะต้องค่าสีเดิม</span>
+                            </div>
+                        </label>
+
+                        <label class="relative flex items-start p-4 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-950 cursor-pointer transition group">
+                            <input type="radio" name="colorMode" value="true" class="mt-1 text-blue-600 focus:ring-blue-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-semibold text-slate-200 group-hover:text-blue-400">🎨 คมชัด + ปรับเร่งสีสด (Color Boost)</span>
+                                <span class="block text-xs text-slate-400 mt-0.5">ขยาย 4x + เพิ่มความคมชัด + เร่งสีและ Contrast</span>
+                            </div>
+                        </label>
                     </div>
                 </div>
-                <div>
-                    <button onclick="openAccountModal()"
-                        class="flex items-center gap-3 bg-gray-800/80 hover:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-700 shadow-sm transition group text-left">
-                        <div id="userAvatar"
-                            class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:scale-105 transition">
-                            U</div>
-                        <div class="hidden sm:block pr-1">
-                            <p id="navUsername" class="text-sm font-semibold text-white leading-none">-</p>
-                            <span id="navRole" class="text-[10px] text-emerald-400 font-mono uppercase">-</span>
-                        </div>
-                        <i
-                            class="fa-solid fa-chevron-down text-xs text-gray-400 group-hover:text-emerald-400 transition"></i>
+
+                <!-- PROCESS BUTTON -->
+                <button id="processBtn" onclick="processImage()" class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>ประมวลผลเพิ่มความชัด (Heal & Upscale 4x)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- RESULT SECTION WITH SWITCHABLE COMPARISON VIEWS -->
+        <div id="resultSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl hidden space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h2 class="text-xl font-bold text-green-400 flex items-center">
+                    <i class="fa-solid fa-circle-check mr-2"></i> ประมวลผลเสร็จสมบูรณ์!
+                </h2>
+                <span id="resolutionBadge" class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-mono"></span>
+            </div>
+
+            <!-- VIEW MODE TOGGLE BUTTONS -->
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <p class="text-xs text-slate-400 flex items-center">
+                    <i class="fa-solid fa-eye mr-1.5 text-blue-400"></i> เลือกรูปแบบการแสดงผลเปรียบเทียบ:
+                </p>
+                <div class="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button type="button" id="btnModeSlider" onclick="switchCompareMode('slider')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>แบบสไลเดอร์ (เลื่อนได้)</span>
+                    </button>
+                    <button type="button" id="btnModeSideBySide" onclick="switchCompareMode('sideBySide')" class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-table-columns"></i>
+                        <span>แบบวางคู่กัน (ไม่เลื่อน)</span>
                     </button>
                 </div>
             </div>
-        </header>
 
-        <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Section ฝั่งอัปโหลด -->
-            <section class="card-glass p-6 rounded-2xl flex flex-col gap-4">
-                <h2 class="text-lg font-semibold text-emerald-400 flex items-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> อัปโหลดรูปภาพงานพิมพ์
-                </h2>
+            <!-- VIEW 1: INTERACTIVE SLIDER MODE -->
+            <div id="compareSliderContainer">
+                <div class="relative w-full h-80 md:h-[450px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 select-none">
+                    <img id="afterPreview" src="" class="absolute inset-0 w-full h-full object-contain pointer-events-none">
+                    <img id="beforePreview" src="" class="absolute inset-0 w-full h-full object-contain pointer-events-none" style="clip-path: inset(0 50% 0 0);">
 
-                <div id="dropZone"
-                    class="border-2 border-dashed border-gray-700 hover:border-emerald-500 rounded-xl p-8 text-center transition cursor-pointer flex flex-col items-center justify-center min-h-[220px] relative">
-                    <input type="file" id="fileInput" class="hidden" accept="image/jpeg,image/png,image/jpg"
-                        onchange="handleFileSelect(event)">
-                    <i class="fa-solid fa-file-image text-4xl text-gray-500 mb-3" id="uploadIcon"></i>
-                    <p id="uploadText" class="text-gray-300 font-medium">ลากไฟล์มาวางที่นี่ หรือ <span
-                            class="text-emerald-400 underline">คลิกเพื่อเลือกไฟล์</span></p>
-                    <p class="text-[11px] text-gray-500 mt-1">รองรับเฉพาะไฟล์ .JPG, .JPEG และ .PNG</p>
-                    <img id="imagePreview" class="hidden max-h-56 rounded-lg object-contain shadow-md mt-2">
-                </div>
-
-                <!-- 🏷️ กล่องแสดงการแยกชนิดไฟล์ & AI Engine -->
-                <div id="fileTypeBadge" class="hidden p-3 bg-gray-900/90 border border-gray-800 rounded-xl flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-file-invoice text-emerald-400 text-sm"></i>
-                        <span class="text-xs text-gray-300">ชนิดไฟล์: <strong id="detectedExt" class="text-white font-mono uppercase">.PNG</strong></span>
-                    </div>
-                    <span id="detectedEngine" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5">
-                        <i class="fa-solid fa-microchip"></i> Line-Art & Vector Engine
-                    </span>
-                </div>
-
-                <div id="analysisBox"
-                    class="hidden p-4 rounded-xl bg-gray-900/80 border border-gray-800 text-sm space-y-2">
-                    <h3 class="font-semibold text-gray-300 border-b border-gray-800 pb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-magnifying-glass-chart text-emerald-400"></i> ผลการวิเคราะห์อัตโนมัติ:
-                    </h3>
-                    <ul id="analysisList" class="space-y-1 text-gray-400 text-xs"></ul>
-                </div>
-
-                <button onclick="processImage()" id="btnProcess" disabled
-                    class="w-full btn-gradient disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold shadow-lg transition flex items-center justify-center gap-2 text-base mt-auto">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> ซ่อม & ขยาย 400%
-                </button>
-            </section>
-
-            <!-- Section ฝั่งแสดงผลลัพธ์ -->
-            <section class="card-glass p-6 rounded-2xl flex flex-col justify-between">
-                <div>
-                    <h2 class="text-lg font-semibold text-emerald-400 flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-object-ungroup"></i> เปรียบเทียบผลลัพธ์
-                    </h2>
-
-                    <div id="resultPlaceholder"
-                        class="border border-gray-800 rounded-xl min-h-[300px] flex flex-col items-center justify-center text-gray-500 p-6">
-                        <i class="fa-solid fa-photo-film text-5xl mb-3 opacity-40"></i>
-                        <p>ยังไม่มีข้อมูลภาพ กรุณาอัปโหลดไฟล์งานพิมพ์</p>
+                    <div id="sliderDivider" class="absolute top-0 bottom-0 left-1/2 w-0.5 bg-blue-500 pointer-events-none z-10 shadow-[0_0_12px_rgba(59,130,246,0.9)]">
+                        <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-blue-600 border-2 border-white rounded-full shadow-lg flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                        </div>
                     </div>
 
-                    <div id="resultContent" class="hidden space-y-4">
-                        <!-- Before / After Slider -->
-                        <div
-                            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-gray-700 bg-black/50 select-none">
-                            <div class="absolute top-2 left-2 z-20 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                                Before</div>
-                            <div
-                                class="absolute top-2 right-2 z-20 bg-emerald-600/80 text-white text-xs px-2 py-1 rounded">
-                                After</div>
-                            <img id="imgAfter"
-                                class="absolute inset-0 w-full h-full object-contain pointer-events-none">
-                            <img id="imgBefore"
-                                class="absolute inset-0 w-full h-full object-contain pointer-events-none"
-                                style="clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);">
-                            <input type="range" min="0" max="100" value="50"
-                                class="slider-input absolute inset-0 w-full h-full opacity-0 z-30 cursor-ew-resize m-0"
-                                oninput="updateSlider(this.value)">
-                            <div id="sliderHandle"
-                                class="absolute top-0 bottom-0 left-[50%] w-0.5 bg-white z-20 pointer-events-none shadow-[0_0_5px_rgba(0,0,0,0.5)]">
-                                <div
-                                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-800 shadow-lg">
-                                    <i class="fa-solid fa-arrows-left-right text-sm"></i>
-                                </div>
-                            </div>
-                        </div>
+                    <input type="range" min="0" max="100" value="50" id="sliderRange" class="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20" oninput="updateSlider(this.value)">
 
-                        <!-- Grid ข้อมูลความละเอียด -->
-                        <div
-                            class="grid grid-cols-2 gap-4 text-xs bg-gray-900/60 p-3 rounded-lg border border-gray-800">
-                            <div><span class="text-gray-500">ความละเอียดเดิม:</span>
-                                <p id="resOriginal" class="font-bold text-gray-300">-</p>
-                            </div>
-                            <div><span class="text-gray-500">ความละเอียดใหม่:</span>
-                                <p id="resHealed" class="font-bold text-emerald-400">-</p>
-                            </div>
-                        </div>
+                    <span class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-slate-300 text-xs px-2.5 py-1 rounded-md border border-slate-700 pointer-events-none z-10">ก่อน (Before)</span>
+                    <span class="absolute top-3 right-3 bg-blue-600/80 backdrop-blur-md text-white text-xs font-medium px-2.5 py-1 rounded-md shadow pointer-events-none z-10">หลัง (After 4x)</span>
+                </div>
+            </div>
 
-                        <!-- รายการปรับปรุงแก้ไข -->
-                        <div class="p-3.5 bg-emerald-950/30 border border-emerald-800/50 rounded-xl space-y-2">
-                            <h4
-                                class="text-xs font-semibold text-emerald-400 flex items-center gap-2 border-b border-emerald-800/40 pb-1.5">
-                                <i class="fa-solid fa-square-check"></i> รายการที่ได้รับการซ่อมแซม & ปรับปรุง:
-                            </h4>
-                            <ul id="improvementsList" class="space-y-1.5 text-xs text-gray-300"></ul>
+            <!-- VIEW 2: STATIC SIDE-BY-SIDE MODE WITH ZOOM FEATURE -->
+            <div id="compareSideBySideContainer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">ก่อนปรับแต่ง (Before)</span>
+                        <button type="button" onclick="openZoomModal('before')" class="text-[11px] text-blue-400 hover:text-blue-300 flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-800 transition">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            <span>ขยายใหญ่</span>
+                        </button>
+                    </div>
+                    <div onclick="openZoomModal('before')" class="w-full h-64 md:h-80 bg-slate-900/50 rounded-lg overflow-hidden flex items-center justify-center border border-slate-800/80 cursor-pointer group relative">
+                        <img id="beforeSideImg" src="" class="w-full h-full object-contain transition duration-300 group-hover:scale-105">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center text-white text-xs font-medium space-x-1.5 backdrop-blur-[1px]">
+                            <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
+                            <span>คลิกเพื่อขยายภาพ</span>
                         </div>
                     </div>
                 </div>
 
-                <div id="downloadAction" class="hidden pt-4 border-t border-gray-800 flex gap-3">
-                    <a id="btnDownloadPdf" href="#" target="_blank"
-                        class="flex-1 btn-gradient text-center text-white py-2.5 rounded-lg font-medium shadow-md hover:opacity-90 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> โหลด PDF 300 DPI ไปใช้งาน
-                    </a>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Modal จัดการบัญชีผู้ใช้ -->
-    <div id="accountModal"
-        class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div
-            class="card-glass w-full max-w-xl rounded-2xl p-6 relative shadow-2xl border border-gray-700 max-h-[90vh] flex flex-col">
-            <button onclick="closeAccountModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i
-                    class="fa-solid fa-xmark text-xl"></i></button>
-
-            <div class="flex items-center gap-4 pb-4 border-b border-gray-800 mb-4">
-                <div id="accAvatar"
-                    class="w-14 h-14 rounded-full bg-emerald-600 text-white font-bold text-xl flex items-center justify-center shadow-lg border-2 border-emerald-400 shrink-0">
-                    U</div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h3 id="accUsername" class="text-lg font-bold text-white leading-tight">-</h3>
-                        <span id="accRoleBadge"
-                            class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono uppercase">-</span>
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">หลังปรับแต่ง (After 4x)</span>
+                        <button type="button" onclick="openZoomModal('after')" class="text-[11px] text-blue-400 hover:text-blue-300 flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-800 transition">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            <span>ขยายใหญ่</span>
+                        </button>
                     </div>
-                    <p id="accEmail" class="text-xs text-gray-400 mt-0.5">-</p>
+                    <div onclick="openZoomModal('after')" class="w-full h-64 md:h-80 bg-slate-900/50 rounded-lg overflow-hidden flex items-center justify-center border border-slate-800/80 cursor-pointer group relative">
+                        <img id="afterSideImg" src="" class="w-full h-full object-contain transition duration-300 group-hover:scale-105">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center text-white text-xs font-medium space-x-1.5 backdrop-blur-[1px]">
+                            <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
+                            <span>คลิกเพื่อขยายภาพ</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto pr-1 space-y-3 mb-4">
-                <div class="flex justify-between items-center sticky top-0 bg-[#161b22] py-1 z-10">
-                    <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการซ่อมภาพย้อนหลัง
-                    </h4>
-                    <button onclick="clearHistory()"
-                        class="text-[11px] text-gray-500 hover:text-red-400 transition">ล้างประวัติ</button>
-                </div>
-                <div id="historyContainer" class="space-y-2"></div>
+            <!-- IMPROVEMENTS LIST -->
+            <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">รายละเอียดการปรับปรุงภาพ:</h4>
+                <ul id="improvementsList" class="space-y-1.5 text-sm text-slate-300"></ul>
             </div>
 
-            <div class="pt-3 border-t border-gray-800 flex gap-3">
-                <button onclick="closeAccountModal(); openChangePasswordModal();"
-                    class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2 text-xs border border-gray-700">
-                    <i class="fa-solid fa-key text-emerald-400"></i> เปลี่ยนรหัสผ่าน
+            <!-- DOWNLOAD ACTIONS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a id="downloadPngBtn" href="" target="_blank" download class="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-center font-medium rounded-xl border border-slate-700 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-image"></i>
+                    <span>ดาวน์โหลดรูป HD (.PNG)</span>
+                </a>
+                <a id="downloadPdfBtn" href="" target="_blank" download class="py-3 px-4 bg-green-600 hover:bg-green-500 text-white text-center font-semibold rounded-xl shadow-lg shadow-green-600/25 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>ดาวน์โหลดสำหรับพิมพ์ (.PDF 300 DPI)</span>
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
+        &copy; 2026 PassPrint. Designed for SME Print Houses.
+    </footer>
+
+    <!-- FULLSCREEN IMAGE ZOOM MODAL -->
+    <div id="imageZoomModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center hidden p-4 sm:p-6" onclick="closeZoomModal(event)">
+        <div class="relative w-full max-w-6xl h-full max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
+            <button onclick="closeZoomModal()" class="absolute -top-3 -right-3 sm:top-2 sm:right-2 z-10 w-10 h-10 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full flex items-center justify-center text-lg border border-slate-600 transition shadow-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 mb-4 shadow-xl z-10">
+                <button type="button" id="zoomTabBefore" onclick="switchZoomImg('before')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-image"></i>
+                    <span>ก่อนปรับแต่ง (Original)</span>
                 </button>
-                <button onclick="handleLogout()"
-                    class="bg-red-900/30 hover:bg-red-900/60 text-red-400 border border-red-800/50 px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2 text-xs">
-                    <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+                <button type="button" id="zoomTabAfter" onclick="switchZoomImg('after')" class="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>หลังปรับแต่ง (After 4x)</span>
                 </button>
             </div>
+
+            <div class="w-full flex-1 flex items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-2 relative">
+                <img id="zoomModalImg" src="" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl select-none">
+            </div>
+            <p class="text-[11px] text-slate-400 mt-3 flex items-center">
+                <i class="fa-solid fa-circle-info mr-1.5 text-blue-400"></i> กดปุ่มสลับภาพด้านบน หรือกด ESC เพื่อปิดหน้าต่าง
+            </p>
         </div>
     </div>
 
-    <!-- Modal เปลี่ยนรหัสผ่าน -->
-    <div id="pwdModal"
-        class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="card-glass w-full max-w-md rounded-2xl p-6 relative shadow-2xl border border-gray-700">
-            <button onclick="closeChangePasswordModal()"
-                class="absolute top-4 right-4 text-gray-400 hover:text-white"><i
-                    class="fa-solid fa-xmark text-xl"></i></button>
-            <h3
-                class="text-lg font-semibold text-emerald-400 mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
-                <i class="fa-solid fa-unlock-keyhole"></i> เปลี่ยนรหัสผ่าน
-            </h3>
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
 
-            <form id="changePwdForm" onsubmit="handleChangePasswordSubmit(event)" class="space-y-4">
+            <div class="flex border-b border-slate-800 mb-6">
+                <button id="tabLoginBtn" onclick="switchAuthTab('login')" class="flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400">เข้าสู่ระบบ</button>
+                <button id="tabRegisterBtn" onclick="switchAuthTab('register')" class="flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent">สมัครสมาชิก</button>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">รหัสผ่านเดิม</label>
-                    <input type="password" id="oldPassword" required
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                    <label class="block text-xs text-slate-400 mb-1">Username</label>
+                    <input type="text" id="loginUsername" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">รหัสผ่านใหม่</label>
-                    <input type="password" id="newPassword" required
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
+                    <label class="block text-xs text-slate-400 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                 </div>
-                <button type="submit"
-                    class="w-full btn-gradient py-2.5 rounded-lg text-white font-medium shadow-md">ยืนยันการเปลี่ยนรหัสผ่าน</button>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-sm transition">เข้าสู่ระบบ</button>
             </form>
 
-            <div id="pwdAlert"
-                class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 text-red-200 text-xs rounded-lg"></div>
-            <div id="pwdSuccess"
-                class="hidden mt-4 p-3 bg-emerald-900/50 border border-emerald-700 text-emerald-200 text-xs rounded-lg flex items-center gap-2">
-                <i class="fa-solid fa-circle-check"></i> <span id="pwdSuccessText"></span>
+            <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Username</label>
+                    <input type="text" id="regUsername" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Email (Optional)</label>
+                    <input type="email" id="regEmail" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Password</label>
+                    <input type="password" id="regPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-sm transition">ลงทะเบียน</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ACCOUNT & HISTORY MODAL -->
+    <div id="accountModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <button onclick="closeAccountModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <!-- MODAL TABS -->
+            <div class="flex border-b border-slate-800 mb-6">
+                <button id="accTabHistoryBtn" onclick="switchAccountTab('history')" class="flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>ประวัติการใช้งาน</span>
+                </button>
+                <button id="accTabProfileBtn" onclick="switchAccountTab('profile')" class="flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span>ข้อมูลบัญชี</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: HISTORY WITH DELETE FEATURES -->
+            <div id="accTabHistory" class="overflow-y-auto flex-1 pr-1 space-y-4">
+                <div id="historyHeader" class="flex justify-between items-center px-1 hidden">
+                    <span class="text-xs text-slate-400">รายการประวัติทั้งหมด:</span>
+                    <button type="button" onclick="clearAllHistory()" class="text-[11px] text-red-400 hover:text-red-300 flex items-center space-x-1 bg-red-950/40 hover:bg-red-900/50 px-2.5 py-1 rounded-lg border border-red-900/60 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>ลบประวัติทั้งหมด</span>
+                    </button>
+                </div>
+                <div id="historyGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <p class="text-xs text-slate-500 col-span-2 text-center py-8">⏳ กำลังโหลดประวัติการใช้งาน...</p>
+                </div>
+            </div>
+
+            <!-- TAB 2: PROFILE, CHANGE PASSWORD & DELETE ACCOUNT -->
+            <div id="accTabProfile" class="hidden overflow-y-auto flex-1 space-y-6">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">ชื่อผู้ใช้:</span>
+                        <span id="profUsername" class="font-semibold text-slate-200"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">อีเมล:</span>
+                        <span id="profEmail" class="text-slate-200"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">สิทธิ์ใช้งาน:</span>
+                        <span id="profRole" class="text-blue-400 font-mono text-xs bg-blue-950 px-2 py-0.5 rounded border border-blue-800"></span>
+                    </div>
+                </div>
+
+                <!-- Change Password Form -->
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-sm font-semibold text-slate-200 mb-3 flex items-center">
+                        <i class="fa-solid fa-key mr-2 text-blue-400"></i> เปลี่ยนรหัสผ่าน
+                    </h4>
+                    <form onsubmit="handleChangePassword(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">รหัสผ่านเดิม</label>
+                            <input type="password" id="oldPassword" required class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">รหัสผ่านใหม่</label>
+                            <input type="password" id="newPassword" required class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700">ยืนยันการเปลี่ยนรหัสผ่าน</button>
+                    </form>
+                </div>
+
+                <!-- DANGER ZONE: DELETE ACCOUNT -->
+                <div class="bg-red-950/20 p-4 rounded-xl border border-red-900/50">
+                    <h4 class="text-sm font-semibold text-red-400 mb-1 flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i> พื้นที่อันตราย (Danger Zone)
+                    </h4>
+                    <p class="text-xs text-slate-400 mb-3">เมื่อลบบัญชี ข้อมูลส่วนตัวและประวัติการประมวลผลทั้งหมดจะถูกลบถาวร ไม่สามารถกู้คืนได้</p>
+                    <button type="button" onclick="handleDeleteAccount()" class="w-full py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition border border-red-500 flex items-center justify-center space-x-1.5 shadow">
+                        <i class="fa-solid fa-user-xmark"></i>
+                        <span>ยืนยันลบบัญชีผู้ใช้ถาวร</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript Control Logic -->
+    <!-- JS SCRIPT -->
     <script>
-        const API_BASE = "";
         let selectedFile = null;
-        let currentUserData = null;
+        let originalObjectUrl = null;
+        let processedAfterUrl = null;
+        let currentUser = null;
 
         document.addEventListener("DOMContentLoaded", () => {
-            resetAllForms();
-            showLoginView();
-            setupDropZone();
+            checkAuth();
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") closeZoomModal();
+            });
         });
 
-        function resetAllForms() {
-            document.getElementById('loginForm').reset();
-            document.getElementById('registerForm').reset();
-            resetWorkspaceUI();
+        /* --- ZOOM MODAL FUNCTIONS --- */
+        function openZoomModal(type) {
+            const zoomModal = document.getElementById("imageZoomModal");
+            zoomModal.classList.remove("hidden");
+            switchZoomImg(type);
         }
 
-        function resetWorkspaceUI() {
-            selectedFile = null;
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput) fileInput.value = '';
-
-            const preview = document.getElementById('imagePreview');
-            preview.src = '';
-            preview.classList.add('hidden');
-
-            document.getElementById('uploadIcon').classList.remove('hidden');
-            document.getElementById('uploadText').classList.remove('hidden');
-
-            document.getElementById('fileTypeBadge').classList.add('hidden');
-            document.getElementById('analysisBox').classList.add('hidden');
-            document.getElementById('analysisList').innerHTML = '';
-
-            document.getElementById('btnProcess').disabled = true;
-
-            document.getElementById('resultPlaceholder').classList.remove('hidden');
-            document.getElementById('resultContent').classList.add('hidden');
-            document.getElementById('downloadAction').classList.add('hidden');
-
-            document.getElementById('imgBefore').src = '';
-            document.getElementById('imgAfter').src = '';
-            document.getElementById('resOriginal').innerText = '-';
-            document.getElementById('resHealed').innerText = '-';
-            document.getElementById('improvementsList').innerHTML = '';
-            document.getElementById('btnDownloadPdf').href = '#';
+        function closeZoomModal() {
+            const zoomModal = document.getElementById("imageZoomModal");
+            zoomModal.classList.add("hidden");
         }
 
-        function showLoginView() {
-            document.getElementById('loginView').classList.remove('hidden');
-            document.getElementById('appView').classList.add('hidden');
+        function switchZoomImg(type) {
+            const zoomImg = document.getElementById("zoomModalImg");
+            const btnBefore = document.getElementById("zoomTabBefore");
+            const btnAfter = document.getElementById("zoomTabAfter");
+
+            if (type === 'before') {
+                zoomImg.src = originalObjectUrl;
+                btnBefore.className = "px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow";
+                btnAfter.className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5";
+            } else {
+                zoomImg.src = processedAfterUrl;
+                btnAfter.className = "px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow";
+                btnBefore.className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5";
+            }
         }
 
-        function showAppView(user) {
-            currentUserData = user;
-            document.getElementById('navUsername').innerText = user.username || 'User';
-            document.getElementById('navRole').innerText = user.role || 'USER';
-            document.getElementById('userAvatar').innerText = (user.username || 'U').charAt(0).toUpperCase();
+        /* --- COMPARE VIEW TOGGLE --- */
+        function switchCompareMode(mode) {
+            const sliderContainer = document.getElementById("compareSliderContainer");
+            const sideBySideContainer = document.getElementById("compareSideBySideContainer");
+            const btnSlider = document.getElementById("btnModeSlider");
+            const btnSideBySide = document.getElementById("btnModeSideBySide");
 
-            resetWorkspaceUI();
-
-            document.getElementById('loginView').classList.add('hidden');
-            document.getElementById('appView').classList.remove('hidden');
+            if (mode === 'slider') {
+                sliderContainer.classList.remove("hidden");
+                sideBySideContainer.classList.add("hidden");
+                btnSlider.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow";
+                btnSideBySide.className = "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5";
+            } else {
+                sliderContainer.classList.add("hidden");
+                sideBySideContainer.classList.remove("hidden");
+                btnSideBySide.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition flex items-center space-x-1.5 shadow";
+                btnSlider.className = "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5";
+            }
         }
 
         function updateSlider(val) {
-            document.getElementById('imgBefore').style.clipPath = `polygon(0 0, ${val}% 0, ${val}% 100%, 0 100%)`;
-            document.getElementById('sliderHandle').style.left = `${val}%`;
+            const beforeImg = document.getElementById("beforePreview");
+            const divider = document.getElementById("sliderDivider");
+            const rightClip = 100 - val;
+            beforeImg.style.clipPath = `inset(0 ${rightClip}% 0 0)`;
+            divider.style.left = `${val}%`;
         }
 
-        async function handleLogout() {
-            localStorage.removeItem('access_token');
-            currentUserData = null;
-            closeAccountModal();
-            resetAllForms();
-            showLoginView();
-        }
+        function checkAuth() {
+            const token = localStorage.getItem("token");
+            const authSection = document.getElementById("authSection");
 
-        function getUserHistoryKey() {
-            if (!currentUserData || !currentUserData.username) return null;
-            return `passprint_history_${currentUserData.username}`;
-        }
-
-        function openAccountModal() {
-            if (!currentUserData) return;
-            document.getElementById('accUsername').innerText = currentUserData.username || 'User';
-            document.getElementById('accEmail').innerText = currentUserData.email || 'ไม่พบข้อมูลอีเมล';
-            document.getElementById('accRoleBadge').innerText = currentUserData.role || 'USER';
-            document.getElementById('accAvatar').innerText = (currentUserData.username || 'U').charAt(0).toUpperCase();
-
-            renderHistoryUI();
-            document.getElementById('accountModal').classList.remove('hidden');
-        }
-
-        function closeAccountModal() {
-            document.getElementById('accountModal').classList.add('hidden');
-        }
-
-        function saveToHistory(item) {
-            const key = getUserHistoryKey();
-            if (!key) return;
-            let history = JSON.parse(localStorage.getItem(key) || '[]');
-            history.unshift(item);
-            if (history.length > 20) history.pop();
-            localStorage.setItem(key, JSON.stringify(history));
-        }
-
-        function renderHistoryUI() {
-            const container = document.getElementById('historyContainer');
-            const key = getUserHistoryKey();
-            if (!key) {
-                container.innerHTML = `<div class="text-center py-8 text-gray-500 border border-dashed border-gray-800 rounded-xl"><p class="text-xs">ไม่พบข้อมูลบัญชีผู้ใช้</p></div>`;
-                return;
-            }
-
-            const history = JSON.parse(localStorage.getItem(key) || '[]');
-            if (history.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-8 text-gray-500 border border-dashed border-gray-800 rounded-xl">
-                        <i class="fa-solid fa-clock-rotate-left text-2xl mb-2 opacity-40"></i>
-                        <p class="text-xs">ยังไม่มีประวัติการประมวลผลภาพ</p>
-                    </div>
+            if (token) {
+                fetch("/me", { headers: { "Authorization": `Bearer ${token}` } })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        currentUser = data.data;
+                        authSection.innerHTML = `
+                            <div class="flex items-center space-x-2">
+                                <button onclick="openAccountModal('history')" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center">
+                                    <i class="fa-solid fa-clock-rotate-left mr-1.5 text-blue-400"></i> ประวัติการใช้งาน
+                                </button>
+                                <button onclick="openAccountModal('profile')" class="px-3 py-1.5 text-xs font-medium bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-800 rounded-lg transition flex items-center">
+                                    <i class="fa-solid fa-user mr-1.5"></i> ${currentUser.username}
+                                </button>
+                                <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-red-400 transition" title="ออกจากระบบ">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        logout();
+                    }
+                })
+                .catch(() => logout());
+            } else {
+                authSection.innerHTML = `
+                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">เข้าสู่ระบบ</button>
+                    <button onclick="openAuthModal('register')" class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-lg shadow-blue-600/30">สมัครสมาชิก</button>
                 `;
-                return;
             }
-
-            container.innerHTML = history.map(item => `
-                <div class="flex items-center gap-3 p-2.5 bg-gray-900/60 rounded-xl border border-gray-800/80 hover:border-gray-700 transition">
-                    <img src="${item.preview_url}" class="w-12 h-12 rounded-lg object-cover bg-black border border-gray-700 shrink-0">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs font-semibold text-gray-200 truncate">${item.filename}</p>
-                        <p class="text-[10px] text-gray-400 mt-0.5">${item.date}</p>
-                        <p class="text-[10px] font-mono text-emerald-400 mt-0.5">${item.original_res} ➔ ${item.healed_res}</p>
-                    </div>
-                    <a href="${item.pdf_url}" target="_blank" class="px-2.5 py-1.5 btn-gradient rounded-lg text-[11px] font-medium text-white flex items-center gap-1 shrink-0 hover:opacity-90 transition">
-                        <i class="fa-solid fa-file-pdf"></i> PDF
-                    </a>
-                </div>
-            `).join('');
         }
 
-        function clearHistory() {
-            const key = getUserHistoryKey();
-            if (!key) return;
-            if (confirm(`คุณต้องการล้างประวัติการซ่อมภาพทั้งหมดใช่หรือไม่?`)) {
-                localStorage.removeItem(key);
-                renderHistoryUI();
-            }
+        function openAuthModal(tab) {
+            document.getElementById("authModal").classList.remove("hidden");
+            switchAuthTab(tab);
+        }
+
+        function closeAuthModal() {
+            document.getElementById("authModal").classList.add("hidden");
         }
 
         function switchAuthTab(tab) {
-            const isLogin = tab === 'login';
-            document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
-            document.getElementById('registerForm').classList.toggle('hidden', isLogin);
-            document.getElementById('tabLoginBtn').className = isLogin ? "flex-1 pb-3 font-semibold text-emerald-400 border-b-2 border-emerald-400 text-sm transition" : "flex-1 pb-3 font-semibold text-gray-400 border-b-2 border-transparent text-sm transition";
-            document.getElementById('tabRegBtn').className = !isLogin ? "flex-1 pb-3 font-semibold text-emerald-400 border-b-2 border-emerald-400 text-sm transition" : "flex-1 pb-3 font-semibold text-gray-400 border-b-2 border-transparent text-sm transition";
-            document.getElementById('authAlert').classList.add('hidden');
-        }
+            const loginForm = document.getElementById("loginForm");
+            const registerForm = document.getElementById("registerForm");
+            const tabLoginBtn = document.getElementById("tabLoginBtn");
+            const tabRegisterBtn = document.getElementById("tabRegisterBtn");
 
-        function showAuthAlert(msg) {
-            document.getElementById('authAlertText').innerText = msg;
-            document.getElementById('authAlert').classList.remove('hidden');
-        }
-
-        async function handleLoginSubmit(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnLoginSubmit');
-            const u = document.getElementById('loginUsername').value;
-            const p = document.getElementById('loginPassword').value;
-
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ...`;
-
-            try {
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    localStorage.setItem('access_token', `Bearer ${data.access_token}`);
-                    fetchUserProfileAndEnter();
-                } else {
-                    showAuthAlert(data.detail || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-                }
-            } catch (err) {
-                showAuthAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ`;
+            if (tab === 'login') {
+                loginForm.classList.remove("hidden");
+                registerForm.classList.add("hidden");
+                tabLoginBtn.className = "flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400";
+                tabRegisterBtn.className = "flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent";
+            } else {
+                loginForm.classList.add("hidden");
+                registerForm.classList.remove("hidden");
+                tabRegisterBtn.className = "flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400";
+                tabLoginBtn.className = "flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent";
             }
         }
 
-        async function fetchUserProfileAndEnter() {
-            const token = localStorage.getItem('access_token');
-            try {
-                const res = await fetch(`${API_BASE}/me`, { headers: { 'Authorization': token } });
-                const result = await res.json();
-                if (res.ok) {
-                    showAppView(result.data);
-                } else {
-                    showAuthAlert('ไม่สามารถดึงข้อมูลผู้ใช้ได้');
-                }
-            } catch (err) {
-                showAuthAlert('เกิดข้อผิดพลาดในการโหลดโปรไฟล์');
-            }
-        }
-
-        async function handleRegisterSubmit(e) {
+        async function handleLogin(e) {
             e.preventDefault();
-            const btn = document.getElementById('btnRegSubmit');
-            const u = document.getElementById('regUsername').value;
-            const em = document.getElementById('regEmail').value;
-            const p = document.getElementById('regPassword').value;
-
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังลงทะเบียน...`;
+            const username = document.getElementById("loginUsername").value;
+            const password = document.getElementById("loginPassword").value;
 
             try {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, email: em, password: p })
+                const res = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    localStorage.setItem('access_token', `Bearer ${data.access_token}`);
-                    fetchUserProfileAndEnter();
+                    localStorage.setItem("token", data.access_token);
+                    closeAuthModal();
+                    checkAuth();
                 } else {
-                    showAuthAlert(data.detail || data.message || 'การสมัครสมาชิกไม่สำเร็จ');
+                    alert(data.detail || "เข้าสู่ระบบไม่สำเร็จ");
                 }
             } catch (err) {
-                showAuthAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> ยืนยันสมัครสมาชิก`;
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
             }
         }
 
-        function openChangePasswordModal() {
-            document.getElementById('pwdModal').classList.remove('hidden');
-            document.getElementById('pwdAlert').classList.add('hidden');
-            document.getElementById('pwdSuccess').classList.add('hidden');
-            document.getElementById('changePwdForm').reset();
-        }
-        function closeChangePasswordModal() { document.getElementById('pwdModal').classList.add('hidden'); }
-
-        async function handleChangePasswordSubmit(e) {
+        async function handleRegister(e) {
             e.preventDefault();
-            const oldPwd = document.getElementById('oldPassword').value;
-            const newPwd = document.getElementById('newPassword').value;
-            const token = localStorage.getItem('access_token');
+            const username = document.getElementById("regUsername").value;
+            const email = document.getElementById("regEmail").value;
+            const password = document.getElementById("regPassword").value;
 
             try {
-                const res = await fetch(`${API_BASE}/change-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
-                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+                const res = await fetch("/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem("token", data.access_token);
+                    closeAuthModal();
+                    checkAuth();
+                } else {
+                    alert(data.detail || "ลงทะเบียนไม่สำเร็จ");
+                }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("token");
+            currentUser = null;
+            checkAuth();
+        }
+
+        function openAccountModal(tab) {
+            document.getElementById("accountModal").classList.remove("hidden");
+            switchAccountTab(tab);
+            if (currentUser) {
+                document.getElementById("profUsername").innerText = currentUser.username;
+                document.getElementById("profEmail").innerText = currentUser.email || "-";
+                document.getElementById("profRole").innerText = currentUser.role;
+            }
+        }
+
+        function closeAccountModal() {
+            document.getElementById("accountModal").classList.add("hidden");
+        }
+
+        function switchAccountTab(tab) {
+            const accTabHistory = document.getElementById("accTabHistory");
+            const accTabProfile = document.getElementById("accTabProfile");
+            const accTabHistoryBtn = document.getElementById("accTabHistoryBtn");
+            const accTabProfileBtn = document.getElementById("accTabProfileBtn");
+
+            if (tab === 'history') {
+                accTabHistory.classList.remove("hidden");
+                accTabProfile.classList.add("hidden");
+                accTabHistoryBtn.className = "flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400 flex items-center justify-center space-x-2";
+                accTabProfileBtn.className = "flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent flex items-center justify-center space-x-2";
+                loadHistory();
+            } else {
+                accTabHistory.classList.add("hidden");
+                accTabProfile.classList.remove("hidden");
+                accTabProfileBtn.className = "flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-400 flex items-center justify-center space-x-2";
+                accTabHistoryBtn.className = "flex-1 py-2 font-medium text-center text-slate-500 border-b-2 border-transparent flex items-center justify-center space-x-2";
+            }
+        }
+
+        /* --- HISTORY MANAGEMENT (LOAD, DELETE ONE, CLEAR ALL) --- */
+        async function loadHistory() {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            const grid = document.getElementById("historyGrid");
+            const header = document.getElementById("historyHeader");
+            try {
+                const res = await fetch("/history", {
+                    headers: { "Authorization": `Bearer ${token}` }
                 });
                 const data = await res.json();
 
-                if (res.ok) {
-                    document.getElementById('pwdAlert').classList.add('hidden');
-                    document.getElementById('pwdSuccessText').innerText = data.message;
-                    document.getElementById('pwdSuccess').classList.remove('hidden');
-                    setTimeout(closeChangePasswordModal, 2000);
-                } else {
-                    document.getElementById('pwdSuccess').classList.add('hidden');
-                    document.getElementById('pwdAlert').innerText = data.detail || 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน';
-                    document.getElementById('pwdAlert').classList.remove('hidden');
+                if (res.ok && data.status === "success") {
+                    if (data.data.length === 0) {
+                        header.classList.add("hidden");
+                        grid.innerHTML = `<p class="text-xs text-slate-500 col-span-2 text-center py-8">ยังไม่มีประวัติการประมวลผล</p>`;
+                        return;
+                    }
+
+                    header.classList.remove("hidden");
+                    grid.innerHTML = data.data.map(item => `
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center space-x-3 relative group">
+                            <img src="${item.preview_url}" class="w-16 h-16 object-cover rounded-lg bg-black/40">
+                            <div class="flex-1 overflow-hidden">
+                                <p class="text-xs font-medium text-slate-200 truncate">${item.filename}</p>
+                                <p class="text-[10px] text-slate-500 font-mono mt-0.5">${item.original_res} ➔ ${item.healed_res}</p>
+                                <div class="flex items-center space-x-2 mt-2">
+                                    <a href="${item.preview_url}" target="_blank" download class="text-[11px] text-slate-400 hover:text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                                        <i class="fa-solid fa-image mr-1"></i> PNG
+                                    </a>
+                                    <a href="${item.pdf_url}" target="_blank" download class="text-[11px] text-green-400 hover:underline bg-green-950/50 px-2 py-0.5 rounded border border-green-800/50">
+                                        <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+                                    </a>
+                                </div>
+                            </div>
+                            <button onclick="deleteHistoryItem('${item.id}')" class="text-slate-500 hover:text-red-400 p-2 transition rounded-lg hover:bg-slate-900" title="ลบรายการนี้">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    `).join("");
                 }
-            } catch (err) { alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'); }
+            } catch (err) {
+                grid.innerHTML = `<p class="text-xs text-red-400 col-span-2 text-center py-8">ไม่สามารถโหลดประวัติได้</p>`;
+            }
         }
 
-        function setupDropZone() {
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
-            if (!dropZone || !fileInput) return;
+        async function deleteHistoryItem(id) {
+            if (!confirm("คุณต้องการลบรายการประวัตินี้ใช่หรือไม่?")) return;
+            const token = localStorage.getItem("token");
 
-            dropZone.addEventListener('click', () => fileInput.click());
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-emerald-500'); });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-emerald-500'));
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault(); dropZone.classList.remove('border-emerald-500');
-                if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFileSelect({ target: fileInput }); }
-            });
+            try {
+                const res = await fetch(`/history/${id}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadHistory();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || "ไม่สามารถลบรายการได้");
+                }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files ? event.target.files[0] : null;
-            if (!file) return;
+        async function clearAllHistory() {
+            if (!confirm("คุณต้องการลบประวัติการใช้งานทั้งหมดใช่หรือไม่? (การกระทำนี้ไม่สามารถกู้คืนได้)")) return;
+            const token = localStorage.getItem("token");
 
-            // 1. ตรวจสอบชนิดไฟล์ (.jpg, .jpeg, .png)
-            const ext = file.name.split('.').pop().toLowerCase();
-            const validExts = ['jpg', 'jpeg', 'png'];
+            try {
+                const res = await fetch("/history", {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadHistory();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || "ไม่สามารถลบประวัติได้");
+                }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
+        }
 
-            if (!validExts.includes(ext)) {
-                alert('❌ กรุณาเลือกไฟล์รูปภาพนามสกุล .JPG, .JPEG หรือ .PNG เท่านั้นครับ');
+        /* --- CHANGE PASSWORD & DELETE ACCOUNT --- */
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const token = localStorage.getItem("token");
+            const oldPassword = document.getElementById("oldPassword").value;
+            const newPassword = document.getElementById("newPassword").value;
+
+            try {
+                const res = await fetch("/change-password", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว");
+                    document.getElementById("oldPassword").value = "";
+                    document.getElementById("newPassword").value = "";
+                } else {
+                    alert(data.detail || "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+                }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
+        }
+
+        async function handleDeleteAccount() {
+            const confirmName = prompt("⚠️ คำเตือน: ข้อมูลทั้งหมดจะถูกลบถาวร\nกรุณาพิมพ์ข้อความ 'CONFIRM' เพื่อยืนยันการลบบัญชี:");
+            if (confirmName !== "CONFIRM") {
+                if (confirmName !== null) alert("ข้อความยืนยันไม่ถูกต้อง ยกเลิกการลบบัญชี");
                 return;
             }
 
-            selectedFile = file;
-
-            // 2. แสดงรูปพรีวิว
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreview').classList.remove('hidden');
-                document.getElementById('uploadIcon').classList.add('hidden');
-                document.getElementById('uploadText').classList.add('hidden');
-                document.getElementById('imgBefore').src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-
-            // 3. แสดง Badge บอกชนิดไฟล์และ AI Engine ที่ Backend จะเลือกใช้
-            updateFileTypeUI(ext);
-
-            document.getElementById('btnProcess').disabled = false;
-            analyzeImageAuto();
-        }
-
-        function updateFileTypeUI(ext) {
-            const fileTypeBadge = document.getElementById('fileTypeBadge');
-            const detectedExt = document.getElementById('detectedExt');
-            const detectedEngine = document.getElementById('detectedEngine');
-
-            fileTypeBadge.classList.remove('hidden');
-            detectedExt.innerText = `.${ext}`;
-
-            if (ext === 'png') {
-                detectedEngine.className = "px-2.5 py-1 text-[11px] font-semibold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5";
-                detectedEngine.innerHTML = `<i class="fa-solid fa-vector-square"></i> Real-ESRGAN (Line-Art) + Potrace`;
-            } else {
-                detectedEngine.className = "px-2.5 py-1 text-[11px] font-semibold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5";
-                detectedEngine.innerHTML = `<i class="fa-solid fa-camera-retro"></i> SwinIR + Real-ESRGAN (Photo Denoise)`;
+            const token = localStorage.getItem("token");
+            try {
+                const res = await fetch("/delete-account", {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("ลบบัญชีผู้ใช้เรียบร้อยแล้ว");
+                    closeAccountModal();
+                    logout();
+                } else {
+                    alert(data.detail || "ไม่สามารถลบบัญชีได้");
+                }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
             }
         }
 
-        async function analyzeImageAuto() {
-            if (!selectedFile) return;
-            const box = document.getElementById('analysisBox');
-            const list = document.getElementById('analysisList');
+        /* --- PROCESS & FILE UPLOAD --- */
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            box.classList.remove('hidden');
-            list.innerHTML = `<li class="text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> กำลังวิเคราะห์องค์ประกอบภาพ...</li>`;
+            selectedFile = file;
+            if (originalObjectUrl) URL.revokeObjectURL(originalObjectUrl);
+            originalObjectUrl = URL.createObjectURL(file);
 
+            document.getElementById("resultSection").classList.add("hidden");
+            
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            formData.append("file", file);
+
+            const analysisSection = document.getElementById("analysisSection");
+            const analysisList = document.getElementById("analysisList");
+            analysisList.innerHTML = "<li class='text-slate-400'>⏳ กำลังวิเคราะห์ไฟล์...</li>";
+            analysisSection.classList.remove("hidden");
 
             try {
-                const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: formData });
+                const res = await fetch("/analyze", { method: "POST", body: formData });
                 const data = await res.json();
 
-                list.innerHTML = '';
-                if (data.issues && data.issues.length > 0) {
-                    data.issues.forEach(issue => {
-                        const li = document.createElement('li');
-                        li.className = "flex items-start gap-1.5";
-                        li.innerText = issue;
-                        list.appendChild(li);
-                    });
+                if (res.ok && data.issues) {
+                    analysisList.innerHTML = data.issues.map(issue => `<li class="flex items-start"><span class="mr-2">•</span><span>${issue}</span></li>`).join("");
                 } else {
-                    list.innerHTML = `<li class="text-emerald-400"><i class="fa-solid fa-check"></i> ภาพสมบูรณ์พร้อมซ่อมแซม</li>`;
+                    analysisList.innerHTML = "<li class='text-red-400'>ไม่สามารถวิเคราะห์ไฟล์ได้</li>";
                 }
             } catch (err) {
-                list.innerHTML = `<li class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> ไม่สามารถวิเคราะห์ภาพได้</li>`;
+                analysisList.innerHTML = "<li class='text-red-400'>เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์</li>";
             }
         }
 
         async function processImage() {
             if (!selectedFile) return;
-            const btn = document.getElementById('btnProcess');
-            btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังประมวลผลด้วย AI...`;
 
-            const formData = new FormData(); formData.append('file', selectedFile);
+            const processBtn = document.getElementById("processBtn");
+            const selectedMode = document.querySelector('input[name="colorMode"]:checked').value;
+            const adjustColor = selectedMode === "true";
+            
+            processBtn.disabled = true;
+            processBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังประมวลผล...`;
+
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+            formData.append("adjust_color", adjustColor);
+
+            const headers = {};
+            const token = localStorage.getItem("token");
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+
             try {
-                const res = await fetch(`${API_BASE}/heal`, { method: 'POST', body: formData });
+                const res = await fetch("/heal", {
+                    method: "POST",
+                    headers: headers,
+                    body: formData
+                });
                 const data = await res.json();
 
-                if (res.ok) {
-                    document.getElementById('resultPlaceholder').classList.add('hidden');
-                    document.getElementById('resultContent').classList.remove('hidden');
-                    document.getElementById('downloadAction').classList.remove('hidden');
+                if (res.ok && data.status === "success") {
+                    processedAfterUrl = data.preview_url;
 
-                    document.getElementById('imgAfter').src = data.preview_url;
-                    document.getElementById('resOriginal').innerText = data.original_resolution;
-                    document.getElementById('resHealed').innerText = data.healed_resolution;
-                    document.getElementById('btnDownloadPdf').href = data.pdf_url;
-
-                    const impList = document.getElementById('improvementsList');
-                    impList.innerHTML = '';
-
-                    const defaultImprovements = [
-                        `ขยายความละเอียดภาพ 400% (${data.original_resolution} ➔ ${data.healed_resolution})`,
-                        "กำจัดสัญญาณรบกวน (Noise) และลบรอยแตก JPEG Artifacts",
-                        "ปรับขอบตัวอักษรและเส้นลายเส้นให้คมชัดระดับ Vector",
-                        "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
-                    ];
-
-                    const improvementsToShow = (data.improvements && data.improvements.length > 0)
-                        ? data.improvements
-                        : defaultImprovements;
-
-                    improvementsToShow.forEach(item => {
-                        const li = document.createElement('li');
-                        li.className = 'flex items-start gap-2';
-                        li.innerHTML = `<i class="fa-solid fa-check text-emerald-400 text-[11px] mt-0.5"></i> <span>${item}</span>`;
-                        impList.appendChild(li);
-                    });
-
-                    document.querySelector('.slider-input').value = 50;
+                    document.getElementById("sliderRange").value = 50;
                     updateSlider(50);
 
-                    saveToHistory({
-                        filename: selectedFile.name,
-                        date: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
-                        original_res: data.original_resolution,
-                        healed_res: data.healed_resolution,
-                        preview_url: data.preview_url,
-                        pdf_url: data.pdf_url
-                    });
+                    document.getElementById("beforePreview").src = originalObjectUrl;
+                    document.getElementById("afterPreview").src = processedAfterUrl;
+                    document.getElementById("beforeSideImg").src = originalObjectUrl;
+                    document.getElementById("afterSideImg").src = processedAfterUrl;
+
+                    document.getElementById("resolutionBadge").innerText = `${data.original_resolution} ➔ ${data.healed_resolution}`;
+                    document.getElementById("downloadPngBtn").href = processedAfterUrl;
+                    document.getElementById("downloadPdfBtn").href = data.pdf_url;
+
+                    const improvementsList = document.getElementById("improvementsList");
+                    improvementsList.innerHTML = data.improvements.map(imp => `<li class="flex items-center text-slate-300"><i class="fa-solid fa-check text-green-400 mr-2 text-xs"></i>${imp}</li>`).join("");
+
+                    document.getElementById("resultSection").classList.remove("hidden");
+                    document.getElementById("resultSection").scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert(data.message || "เกิดข้อผิดพลาดในการประมวลผล");
                 }
-            } catch (err) { alert('เกิดข้อผิดพลาดในการประมวลผล'); }
-            finally { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> ซ่อม & ขยาย 400%`; }
+            } catch (err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = `<i class="fa-solid fa-sliders mr-2"></i><span>ประมวลผลเพิ่มความชัด (Heal & Upscale 4x)</span>`;
+            }
         }
     </script>
 </body>
-
 </html>

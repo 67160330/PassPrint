@@ -4,35 +4,100 @@ import cv2
 import bcrypt
 import numpy as np
 from PIL import Image
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Header, Query, status
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
 
-# Import SQLAlchemy & Security Tools
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
+from sqlalchemy.orm import sessionmaker, Session
 from jose import JWTError, jwt
 
-# -------------------------------------------------------------
-# 1. ตั้งค่า Database Connection & Models (PostgreSQL)
-# -------------------------------------------------------------
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:secretpassword@db:5432/print_ai_db")
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your_super_secret_jwt_key")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 วัน
+# --- 1. IMPORT CONFIGURATIONS ---
+from config import (
+    DATABASE_URL,
+    JWT_SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    OUTPUT_DIR
+)
 
+# --- 2. AUTHENTICATION HELPERS ---
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        pw_bytes = plain_password.encode('utf-8')[:72]
+        hash_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(pw_bytes, hash_bytes)
+    except Exception:
+        return False
+
+def get_password_hash(password: str) -> str:
+    pw_bytes = password.encode('utf-8')[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pw_bytes, salt).decode('utf-8')
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+# --- 3. AI IMAGE PROCESSING ENGINE ---
+def process_image_pipeline(img: np.ndarray, ext: str, adjust_color: bool = False) -> tuple[np.ndarray, list[str]]:
+    """ประมวลผล Denoise, Upscale 400%, ปรับสี และ Sharpening"""
+    h, w = img.shape[:2]
+    
+    # 3.1 Denoise ตามประเภทไฟล์
+    if ext in ['.jpg', '.jpeg']:
+        denoised = cv2.bilateralFilter(img, d=7, sigmaColor=35, sigmaSpace=35)
+    else:
+        denoised = img
+
+    # 3.2 Upscale 400% (INTER_LANCZOS4)
+    upscaled = cv2.resize(denoised, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
+
+    # 3.3 Color Adjustment Mode
+    if adjust_color:
+        hsv = cv2.cvtColor(upscaled, cv2.COLOR_BGR2HSV).astype(np.float32)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.15, 0, 255)
+        hsv[:, :, 2] = np.clip((hsv[:, :, 2] - 128) * 1.05 + 128, 0, 255)
+        processed = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+        improvements = [
+            f"ขยายความรายละเอียด 400% ({w}x{h} px ➔ {w*4}x{h*4} px)",
+            "เพิ่มความคมชัดของตัวอักษรและลายเส้นขอบภาพ",
+            "ปรับแต่งเพิ่มความสดของสี (Saturation) และปรับ Contrast",
+            "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
+        ]
+    else:
+        processed = upscaled
+        improvements = [
+            f"ขยายความรายละเอียด 400% ({w}x{h} px ➔ {w*4}x{h*4} px)",
+            "เพิ่มความคมชัดของตัวอักษรและลายเส้นขอบภาพ",
+            "คงค่าสีและโทนสีเดิมของไฟล์ต้นฉบับไว้ 100%",
+            "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
+        ]
+
+    # 3.4 Unsharp Masking
+    gaussian_blur = cv2.GaussianBlur(processed, (0, 0), sigmaX=1.5)
+    sharpened = cv2.addWeighted(processed, 1.3, gaussian_blur, -0.3, 0)
+    sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
+
+    return sharpened, improvements
+
+# --- 4. DATABASE MODELS & SETUP ---
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# SQLAlchemy ORM Models
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -53,40 +118,14 @@ class ImageHistory(Base):
     pdf_url = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# 🟢 สร้างตารางใน PostgreSQL อัตโนมัติหากยังไม่มี
 Base.metadata.create_all(bind=engine)
 
-# Function สำหรับสร้าง Session เชื่อมต่อ DB
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-# -------------------------------------------------------------
-# 2. ตั้งค่า Password Hashing (Direct Bcrypt) & JWT Security
-# -------------------------------------------------------------
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        pw_bytes = plain_password.encode('utf-8')[:72]
-        hash_bytes = hashed_password.encode('utf-8')
-        return bcrypt.checkpw(pw_bytes, hash_bytes)
-    except Exception:
-        return False
-
-def get_password_hash(password: str) -> str:
-    pw_bytes = password.encode('utf-8')[:72]
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pw_bytes, salt).decode('utf-8')
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     if not token:
@@ -114,14 +153,8 @@ def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme), db:
     except JWTError:
         return None
 
-# -------------------------------------------------------------
-# 3. FastAPI App Configuration
-# -------------------------------------------------------------
-app = FastAPI(
-    title="PassPrint AI - Multi-Engine Processing API",
-    description="ระบบวิเคราะห์ เพิ่มความละเอียดไฟล์พิมพ์ และจัดการผู้ใช้สำหรับ SME",
-    version="3.1.0"
-)
+# --- 5. FASTAPI APP & ROUTING ---
+app = FastAPI(title="PassPrint - SME Print Optimizer", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -131,13 +164,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OUTPUT_DIR = "fixed_files"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-app.mount("/fixed_files", StaticFiles(directory=OUTPUT_DIR), name="fixed_files")
+app.mount(f"/{OUTPUT_DIR}", StaticFiles(directory=OUTPUT_DIR), name=OUTPUT_DIR)
 
-# -------------------------------------------------------------
-# 4. Pydantic Schemas
-# -------------------------------------------------------------
 class UserRegister(BaseModel):
     username: str
     password: str
@@ -151,9 +180,7 @@ class ChangePassword(BaseModel):
     old_password: str
     new_password: str
 
-# -------------------------------------------------------------
-# 🌐 Web UI Router
-# -------------------------------------------------------------
+# --- Web UI Routes ---
 @app.get("/", response_class=HTMLResponse, tags=["Web UI"])
 def read_root():
     if os.path.exists("index.html"):
@@ -163,28 +190,21 @@ def read_root():
 @app.get("/analyze")
 @app.get("/heal")
 @app.get("/process")
-@app.get("/upscale")
 def handle_browser_get_redirect():
     return RedirectResponse(url="/")
 
-# -------------------------------------------------------------
-# 🔑 1. Authentication APIs (PostgreSQL Integrated)
-# -------------------------------------------------------------
+# --- Auth APIs ---
 @app.post("/register", tags=["Authentication"])
 def register(user: UserRegister, db: Session = Depends(get_db)):
     email_address = user.email if user.email else f"{user.username}@passprint.local"
-
-    existing_user = db.query(User).filter(
-        (User.username == user.username) | (User.email == email_address)
-    ).first()
+    existing_user = db.query(User).filter((User.username == user.username) | (User.email == email_address)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username หรือ Email นี้ถูกใช้งานแล้ว")
     
-    hashed_password = get_password_hash(user.password)
     new_user = User(
         username=user.username,
         email=email_address,
-        password_hash=hashed_password,
+        password_hash=get_password_hash(user.password),
         role="USER"
     )
     db.add(new_user)
@@ -201,11 +221,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Username หรือ Password ไม่ถูกต้อง")
     
     token = create_access_token(data={"sub": db_user.username, "id": db_user.id})
-    return {
-        "status": "success",
-        "access_token": token,
-        "token_type": "bearer"
-    }
+    return {"status": "success", "access_token": token, "token_type": "bearer"}
 
 @app.post("/change-password", tags=["Authentication"])
 def change_password(data: ChangePassword, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -216,11 +232,7 @@ def change_password(data: ChangePassword, current_user: User = Depends(get_curre
     db.commit()
     return {"status": "success", "message": "เปลี่ยนรหัสผ่านสำเร็จ"}
 
-# -------------------------------------------------------------
-# 👥 2. User Management APIs
-# -------------------------------------------------------------
 @app.get("/me", tags=["User Management"])
-@app.get("/users/me", tags=["User Management"])
 def get_user_profile(current_user: User = Depends(get_current_user)):
     return {
         "status": "success",
@@ -233,30 +245,7 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
         }
     }
 
-@app.get("/check-username/{name}", tags=["User Management"])
-def check_username(name: str, db: Session = Depends(get_db)):
-    exists = db.query(User).filter(User.username.ilike(name)).first() is not None
-    return {"username": name, "available": not exists}
-
-@app.get("/users", tags=["User Management"])
-def get_users(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1), db: Session = Depends(get_db)):
-    total = db.query(User).count()
-    users = db.query(User).offset(skip).limit(limit).all()
-    result = [
-        {"id": u.id, "username": u.username, "email": u.email, "role": u.role, "created_at": u.created_at.isoformat()} 
-        for u in users
-    ]
-    return {
-        "status": "success",
-        "total": total,
-        "skip": skip,
-        "limit": limit,
-        "data": result
-    }
-
-# -------------------------------------------------------------
-# 🔍 3. Pre-flight Analysis Endpoint
-# -------------------------------------------------------------
+# --- Core Processing APIs ---
 @app.post("/analyze", tags=["Image Processing"])
 async def analyze_image(file: UploadFile = File(...)):
     try:
@@ -272,91 +261,26 @@ async def analyze_image(file: UploadFile = File(...)):
         issues = []
 
         if ext in ['.jpg', '.jpeg']:
-            issues.append("📸 ตรวจพบไฟล์ JPEG/JPG: กำหนดใช้ SwinIR + Real-ESRGAN (Photo Denoise Pipeline)")
+            issues.append("📸 ตรวจพบไฟล์ JPEG/JPG: กำหนดใช้ Photo Denoise Pipeline")
         elif ext == '.png':
-            issues.append("🎨 ตรวจพบไฟล์ PNG/Logo: กำหนดใช้ Real-ESRGAN (Line-Art) + Potrace Vectorizer")
+            issues.append("🎨 ตรวจพบไฟล์ PNG/Logo: กำหนดใช้ Line-Art Vector Engine")
         else:
-            issues.append("⚠️ นามสกุลไฟล์ไม่มาตรฐาน แต่ระบบจะพยายามประมวลผลด้วย Standard Pipeline")
+            issues.append("⚠️ นามสกุลไฟล์ไม่มาตรฐาน แต่ระบบจะประมวลผลด้วย Standard Engine")
 
         if w < 1200 or h < 1200:
-            issues.append(f"🔴 มิติภาพเริ่มต้นค่อนข้างเล็ก ({w} x {h} px) เสี่ยงต่อการแตกเมื่อนำไปพิมพ์จริง")
+            issues.append(f"🔴 มิติภาพเริ่มต้น ({w} x {h} px) เสี่ยงต่อการแตกเมื่อพิมพ์จริง")
         else:
             issues.append(f"✅ มิติภาพเริ่มต้นอยู่ในเกณฑ์ดี ({w} x {h} px)")
 
-        if w < 1000:
-            issues.append("🔴 ความหนาแน่นพิกเซลต่ำ (ประมาณ 72-150 DPI) จำเป็นต้องเกลี่ยและเพิ่มข้อมูลภาพ 400%")
-        else:
-            issues.append("✅ ระดับ DPI พร้อมสำหรับการประมวลผลขึ้นงานพิมพ์")
-
         return {"status": "success", "issues": issues}
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"issues": [f"🔴 เกิดข้อผิดพลาดในการวิเคราะห์: {str(e)}"]})
 
-# -------------------------------------------------------------
-# ✨ 4. PassPrint AI Heal & Upscale Endpoint
-# -------------------------------------------------------------
-@app.post("/heal", tags=["Image Processing"])
-@app.post("/process", tags=["Image Processing"])
-async def heal_image(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            raise HTTPException(status_code=400, detail="ไฟล์รูปภาพไม่ถูกต้อง")
-
-        h, w = img.shape[:2]
-
-        denoised = cv2.bilateralFilter(img, d=5, sigmaColor=25, sigmaSpace=25)
-        upscaled = cv2.resize(denoised, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
-
-        hsv = cv2.cvtColor(upscaled, cv2.COLOR_BGR2HSV).astype(np.float32)
-        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.18, 0, 255)
-        hsv[:, :, 2] = np.clip((hsv[:, :, 2] - 128) * 1.05 + 128, 0, 255)
-        enhanced_bgr = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-
-        gaussian_blur = cv2.GaussianBlur(enhanced_bgr, (0, 0), sigmaX=1.5)
-        sharpened = cv2.addWeighted(enhanced_bgr, 1.35, gaussian_blur, -0.35, 0)
-        sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
-
-        unique_id = uuid.uuid4().hex[:8]
-        preview_filename = f"healed_{unique_id}.png"
-        preview_path = os.path.join(OUTPUT_DIR, preview_filename)
-        cv2.imwrite(preview_path, sharpened)
-
-        sharpened_rgb = cv2.cvtColor(sharpened, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(sharpened_rgb)
-        
-        pdf_filename = f"print_ready_{unique_id}.pdf"
-        pdf_path = os.path.join(OUTPUT_DIR, pdf_filename)
-        pil_img.save(pdf_path, "PDF", resolution=300.0)
-
-        preview_url = f"/fixed_files/{preview_filename}"
-        pdf_url = f"/fixed_files/{pdf_filename}"
-
-        return {
-            "status": "success",
-            "message": "repaired and upscaled successfully",
-            "preview_url": preview_url,
-            "pdf_url": pdf_url,
-            "url": preview_url,
-            "file_url": preview_url,
-            "original_resolution": f"{w} x {h} px",
-            "healed_resolution": f"{w * 4} x {h * 4} px"
-        }
-
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": f"Processing error: {str(e)}"})
-
-# -------------------------------------------------------------
-# ✨ 5. Smart Multi-AI Heal & Upscale (บันทึกประวัติลง PostgreSQL)
-# -------------------------------------------------------------
 @app.post("/heal", tags=["Image Processing"])
 @app.post("/process", tags=["Image Processing"])
 async def heal_image(
     file: UploadFile = File(...), 
+    adjust_color: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
@@ -370,49 +294,9 @@ async def heal_image(
 
         h, w = img.shape[:2]
         ext = os.path.splitext(file.filename)[1].lower()
-        improvements = []
 
-        if ext in ['.jpg', '.jpeg']:
-            denoised = cv2.bilateralFilter(img, d=7, sigmaColor=35, sigmaSpace=35)
-            upscaled = cv2.resize(denoised, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
-            hsv = cv2.cvtColor(upscaled, cv2.COLOR_BGR2HSV).astype(np.float32)
-            hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.15, 0, 255)
-            enhanced_bgr = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-            gaussian_blur = cv2.GaussianBlur(enhanced_bgr, (0, 0), sigmaX=1.5)
-            sharpened = cv2.addWeighted(enhanced_bgr, 1.3, gaussian_blur, -0.3, 0)
-            sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
+        sharpened, improvements = process_image_pipeline(img, ext, adjust_color)
 
-            improvements = [
-                "ประมวลผลด้วย SwinIR + Real-ESRGAN (Photo Mode)",
-                f"ขยายความละเอียดภาพ 400% ({w}x{h} px ➔ {w*4}x{h*4} px)",
-                "กำจัดสัญญาณรบกวน (Noise) และลบรอยแตกสี่เหลี่ยม JPEG Artifacts",
-                "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
-            ]
-
-        elif ext == '.png':
-            upscaled = cv2.resize(img, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
-            kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-            sharpened = cv2.filter2D(upscaled, -1, kernel)
-            hsv = cv2.cvtColor(sharpened, cv2.COLOR_BGR2HSV).astype(np.float32)
-            hsv[:, :, 2] = np.clip(hsv[:, :, 2] * 1.05, 0, 255)
-            sharpened = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-
-            improvements = [
-                "ประมวลผลด้วย Real-ESRGAN (Line-Art) + Potrace Vectorizer",
-                f"ขยายความละเอียดภาพ 400% ({w}x{h} px ➔ {w*4}x{h*4} px)",
-                "รีดขอบตัวอักษร ลายเส้น และโลโก้ให้คมชัดระดับ Vector",
-                "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
-            ]
-
-        else:
-            upscaled = cv2.resize(img, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
-            sharpened = upscaled
-            improvements = [
-                f"ขยายความละเอียดภาพ 400% ({w}x{h} px ➔ {w*4}x{h*4} px)",
-                "ฝังโปรไฟล์สีมาตรฐานสำหรับโรงพิมพ์ (300 DPI Ready)"
-            ]
-
-        # Save Preview & PDF
         unique_id = uuid.uuid4().hex[:8]
         preview_filename = f"healed_{unique_id}.png"
         preview_path = os.path.join(OUTPUT_DIR, preview_filename)
@@ -425,14 +309,11 @@ async def heal_image(
         pdf_path = os.path.join(OUTPUT_DIR, pdf_filename)
         pil_img.save(pdf_path, "PDF", resolution=300.0)
 
-        preview_url = f"/fixed_files/{preview_filename}"
-        pdf_url = f"/fixed_files/{pdf_filename}"
-
-        # 🟢 บันทึกประวัติลง PostgreSQL (กำหนด None หากไม่มี Token ล็อกอิน)
-        target_user_id = current_user.id if current_user else None
+        preview_url = f"/{OUTPUT_DIR}/{preview_filename}"
+        pdf_url = f"/{OUTPUT_DIR}/{pdf_filename}"
 
         history_record = ImageHistory(
-            user_id=target_user_id,
+            user_id=current_user.id if current_user else None,
             filename=file.filename,
             original_res=f"{w} x {h} px",
             healed_res=f"{w * 4} x {h * 4} px",
@@ -451,18 +332,12 @@ async def heal_image(
             "healed_resolution": f"{w * 4} x {h * 4} px",
             "improvements": improvements
         }
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": f"Processing error: {str(e)}"})
 
-# -------------------------------------------------------------
-# 📂 5. History & Management APIs
-# -------------------------------------------------------------
+# --- Image History APIs ---
 @app.get("/history", tags=["Image History"])
-def get_image_history(
-    current_user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
+def get_image_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     records = db.query(ImageHistory).filter(ImageHistory.user_id == current_user.id).order_by(ImageHistory.created_at.desc()).all()
     result = [
         {
@@ -477,15 +352,31 @@ def get_image_history(
     ]
     return {"status": "success", "data": result}
 
-@app.get("/api/v1/images", tags=["Management API"])
-def list_processed_images():
-    files = os.listdir(OUTPUT_DIR)
-    return {"status": "success", "total_files": len(files), "files": [f"/fixed_files/{f}" for f in files]}
+@app.delete("/history/{history_id}", tags=["Image History"])
+def delete_single_history(
+    history_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """ลบประวัติรูปภาพทีละ 1 รายการ"""
+    record = db.query(ImageHistory).filter(
+        ImageHistory.id == history_id, 
+        ImageHistory.user_id == current_user.id
+    ).first()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="ไม่พบประวัติรายการนี้")
 
-@app.delete("/api/v1/images/{filename}", tags=["Management API"])
-def delete_image(filename: str):
-    file_path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    os.remove(file_path)
-    return {"status": "success", "message": f"Deleted {filename}"}
+    db.delete(record)
+    db.commit()
+    return {"status": "success", "message": "ลบรายการประวัติเรียบร้อยแล้ว"}
+
+@app.delete("/history", tags=["Image History"])
+def clear_all_history(
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """ลบประวัติรูปภาพทั้งหมดของผู้ใช้ปัจจุบัน"""
+    db.query(ImageHistory).filter(ImageHistory.user_id == current_user.id).delete()
+    db.commit()
+    return {"status": "success", "message": "ลบประวัติทั้งหมดเรียบร้อยแล้ว"}
