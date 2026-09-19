@@ -148,19 +148,21 @@ docker-compose up --build
 ```
 ---
 
+---
+
 ## 📊 การประเมินผลงานด้วยตนเอง (Self-Assessment Progress)
 
-**ภาพรวมความสำเร็จของโปรเจกต์: 100% / 100%**
+**ภาพรวมความสำเร็จของโปรเจกต์: 75% / 100%** (ระยะที่ 1: ระบบหลักทำงานสมบูรณ์แล้ว อยู่ระหว่างเตรียมขยายฟีเจอร์เพิ่มเติม)
 
 | โมดูลงาน / ขอบเขตระบบ (Module Scope) | สถานะ (Status) | ความคืบหน้า (%) |
 | :--- | :---: | :---: |
-| **1. User Management & Authentication System** (JWT, Password Hashing, Profile) | 완료 / Ready | **100%** |
-| **2. Image Pre-flight Analysis Engine** (สแกนตรวจสอบขนาด/DPI/ไฟล์) | 완료 / Ready | **100%** |
-| **3. Image Upscaling & Processing Pipeline** (Denoise, 4x Lanczos, Sharpen, Color) | 완료 / Ready | **100%** |
-| **4. PDF Generation & Export Engine** (300 DPI Export) | 완료 / Ready | **100%** |
-| **5. Cloud History & Data Persistence** (PostgreSQL & Database Relational Model) | 완료 / Ready | **100%** |
-| **6. Frontend Interface** (Single Page Application, Before/After Image Slider) | 완료 / Ready | **100%** |
-| **7. Containerization & DevOps** (Docker Compose, Config/Env Separation, pgAdmin) | 완료 / Ready | **100%** |
+| **1. User Management & Authentication** (JWT, Password Hashing, Profile) | พร้อมใช้งาน | **100%** |
+| **2. Image Pre-flight Analysis Engine** (สแกนตรวจสอบขนาด/DPI/ไฟล์) | พร้อมใช้งาน | **100%** |
+| **3. Image Upscaling & Processing** (Denoise, 4x Lanczos, Sharpen, Color) | พร้อมใช้งาน | **100%** |
+| **4. PDF Generation & Export Engine** (300 DPI Export) | พร้อมใช้งาน | **100%** |
+| **5. Database & Cloud History** (PostgreSQL Relational Model, Delete APIs) | พร้อมใช้งาน | **100%** |
+| **6. Containerization & Infrastructure** (Docker Compose, Env Config, pgAdmin) | พร้อมใช้งาน | **100%** |
+| **7. Future Expansion** (Batch Processing, Cloud S3, Payment Gateway ฯลฯ) | กำลังวางแผน | **0%** |
 
 ---
 
@@ -203,6 +205,13 @@ graph TD
     DBORM -->|SQL Connection / Port 5432| DB
     pgAdmin -->|Manage / Direct Access| DB
     ImageEngine -->|Save Output Files| FixedFiles
+```
+
+---
+
+## 🛠️ Technology Stack Diagram
+
+```mermaid
 flowchart LR
     subgraph Frontend ["🎨 Frontend"]
         HTML["HTML5"]
@@ -239,3 +248,4 @@ flowchart LR
     Backend --> Processing
     Backend --> Database
     Backend --> DevOps
+```
