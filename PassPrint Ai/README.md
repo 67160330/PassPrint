@@ -150,6 +150,8 @@ docker-compose up --build
 
 ---
 
+---
+
 ## 📊 การประเมินผลงานด้วยตนเอง (Self-Assessment Progress)
 
 **ภาพรวมความสำเร็จของโปรเจกต์: 75% / 100%** (ระยะที่ 1: ระบบหลักทำงานสมบูรณ์แล้ว อยู่ระหว่างเตรียมขยายฟีเจอร์เพิ่มเติม)
@@ -169,42 +171,27 @@ docker-compose up --build
 ## 🏗️ Microservices Architecture Diagram
 
 ```mermaid
-graph TD
-    %% Clients Layer
-    subgraph Clients ["💻 Client Layer"]
-        WebUI["Web Browser / Single Page App\n(HTML5 + Tailwind CSS + JS)"]
-    end
+flowchart TD
+    %% Client & Gateway
+    Client["🌐 Client Web Application\n(HTML5 / Tailwind CSS / JS)"] --> Gateway["🚪 API Gateway / Router\n(FastAPI Router & JWT Middleware)"]
 
-    %% Application Container Layer
-    subgraph WebContainer ["📦 Web Application Service Container (FastAPI)"]
-        API["FastAPI App (main.py)"]
-        AuthModule["Auth Module\n(JWT & Bcrypt)"]
-        ImageEngine["Image Processing Engine\n(OpenCV & PIL)"]
-        DBORM["SQLAlchemy ORM\n(config.py)"]
+    %% Microservices Layer
+    Gateway --> AuthService["🔑 Auth & User Service\n(Authentication & Profile)"]
+    Gateway --> PreflightService["📋 Pre-flight Service\n(Image Spec Analysis)"]
+    Gateway --> ImageService["🎨 Image Processing Service\n(OpenCV Upscaling Engine)"]
+    Gateway --> PDFService["📄 PDF Export Service\n(300 DPI Generator)"]
+    Gateway --> HistoryService["📂 History Service\n(Cloud Record Manager)"]
 
-        API --> AuthModule
-        API --> ImageEngine
-        API --> DBORM
-    end
-
-    %% Database & Management Layer
-    subgraph DBContainer ["📦 Database & Management Containers"]
-        DB[(PostgreSQL Database\nprint_ai_db)]
-        pgAdmin["pgAdmin 4\n(Web DB Manager)"]
-    end
-
-    %% Storage Layer
-    subgraph Storage ["📁 Shared Volume Storage"]
-        FixedFiles["/fixed_files\n(Image Previews & PDFs)"]
-    end
-
-    %% Connections
-    WebUI -->|HTTP / REST API| API
-    WebUI -->|Static Asset Request| FixedFiles
+    %% Databases and Storage Layer
+    AuthService --> UserDB[("🗄️ User Database\n(PostgreSQL)")]
     
-    DBORM -->|SQL Connection / Port 5432| DB
-    pgAdmin -->|Manage / Direct Access| DB
-    ImageEngine -->|Save Output Files| FixedFiles
+    ImageService --> ProcessingEngine["⚙️ Processing Engine\n(OpenCV + Pillow + NumPy)"]
+    ProcessingEngine --> FileStorage[("📁 Shared Storage Volume\n/fixed_files")]
+    
+    PDFService --> FileStorage
+    
+    HistoryService --> HistoryDB[("🗄️ History Database\n(PostgreSQL)")]
+    HistoryService --> FileStorage
 ```
 
 ---
@@ -212,40 +199,31 @@ graph TD
 ## 🛠️ Technology Stack Diagram
 
 ```mermaid
-flowchart LR
-    subgraph Frontend ["🎨 Frontend"]
-        HTML["HTML5"]
-        CSS["Tailwind CSS"]
-        JS["Vanilla JS (ES6)"]
+graph TB
+    subgraph CLOUD_DB ["☁️ CLOUD SERVERS & DATABASES"]
+        DB[("Database\nPostgreSQL 15")]
+        PgAdmin["DB Management\npgAdmin 4"]
+        Storage[("File Storage\nShared Volume /fixed_files")]
     end
 
-    subgraph Backend ["⚙️ Backend Framework"]
-        Python["Python 3.12"]
-        FastAPI["FastAPI"]
-        Uvicorn["Uvicorn Server"]
+    subgraph CORE_APP ["⚡ CORE APPLICATION"]
+        CoreEngine["Python 3.12 — FastAPI — Uvicorn — OpenCV — Pillow — Docker Container"]
     end
 
-    subgraph Processing ["🖼️ Processing & Vision"]
-        OpenCV["OpenCV (CV2)"]
-        PIL["Pillow (PIL)"]
-        NumPy["NumPy"]
+    subgraph API_GATEWAY ["🚪 API - GATEWAY & MANAGEMENT"]
+        Gateway["API Gateway / JWT Auth Middleware"]
+        Dashboard["Dashboard Management & API Docs\n(Swagger UI / ReDoc)"]
     end
 
-    subgraph Database ["🗄️ Database & Security"]
-        Postgres["PostgreSQL 15"]
-        SQLAlchemy["SQLAlchemy"]
-        JWT["JOSE (JWT Tokens)"]
-        Bcrypt["Bcrypt (Hash)"]
+    subgraph CLIENTS ["💻 CLIENT & PLATFORM LAYER"]
+        Desktop["DESKTOP WEB\nHTML5 — CSS3 — JavaScript ES6"]
+        Mobile["MOBILE BROWSER\nResponsive Web UI"]
     end
 
-    subgraph DevOps ["🐳 Infrastructure & Tools"]
-        Docker["Docker"]
-        DockerCompose["Docker Compose"]
-        pgAdmin["pgAdmin 4"]
-    end
-
-    Frontend --> Backend
-    Backend --> Processing
-    Backend --> Database
-    Backend --> DevOps
+    %% Flow Connections
+    CLOUD_DB <--> CORE_APP
+    CORE_APP <--> API_GATEWAY
+    API_GATEWAY --> Desktop
+    API_GATEWAY --> Mobile
+    API_GATEWAY <--> Dashboard
 ```
