@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+bcrypt==4.0.1
+python-jose[cryptography]
+python-multipart
+opencv-python-headless
+Pillow
+numpy
+pydantic
+python-dotenv
