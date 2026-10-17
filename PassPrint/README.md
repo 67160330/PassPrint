@@ -127,3 +127,129 @@ docker-compose up --build
 ├── requirements.txt      # รายชื่อไลบรารี Python Dependencies
 └── README.md             # เอกสารอธิบายรายละเอียดโปรเจกต์
 ```
+## Microservices Architecture
+
+```mermaid
+graph TD
+    %% Subgraphs
+    subgraph Clients ["📱 Client Layer"]
+        WebApp["Web Application"]
+        MobileApp["Mobile App"]
+    end
+
+    subgraph Gateway ["🚪 Gateway & Auth Layer"]
+        APIGateway["API Gateway / Reverse Proxy"]
+        AuthSvc["Auth Service (JWT / Bcrypt)"]
+        CreditSvc["Credit & Quota Management Service"]
+    end
+
+    subgraph CoreServices ["⚙️ Core Microservices"]
+        ImageSvc["Image Processing Service (Crop/Resize)"]
+        AISvc["AI Background Removal Service (rembg)"]
+        PresetSvc["Passport Standards Catalog Service"]
+        PaymentSvc["Monetization & API Key Service"]
+    end
+
+    subgraph StorageLayer ["💾 Data & Storage Layer"]
+        MainDB[("🐘 PostgreSQL DB<br/>(Users, Credits, API Keys)")]
+        CloudStore[("☁️ Cloud Storage<br/>(S3 / Supabase Storage)")]
+    end
+
+    subgraph AsyncLayer ["⚡ Async & Batch Processing"]
+        EventStream["Kafka / Redis Event Stream"]
+        BatchJob["Scheduled Cleanup & Reconciliation Jobs"]
+    end
+
+    %% Flow Connections
+    WebApp --> APIGateway
+    MobileApp --> APIGateway
+
+    APIGateway --> AuthSvc
+    AuthSvc --> CreditSvc
+
+    CreditSvc --> ImageSvc
+    CreditSvc --> AISvc
+    CreditSvc --> PresetSvc
+    CreditSvc --> PaymentSvc
+
+    ImageSvc --> CloudStore
+    AISvc --> CloudStore
+    PresetSvc --> MainDB
+    PaymentSvc --> MainDB
+    CreditSvc --> MainDB
+
+    CreditSvc --> EventStream
+    EventStream --> BatchJob
+    BatchJob --> MainDB
+    BatchJob --> CloudStore
+```
+## Technology stack diagram
+
+```mermaid
+
+graph LR
+    subgraph Layer1 ["💻 Frontend & Clients"]
+        React["React.js / Web"]
+        Flutter["Flutter / Mobile"]
+    end
+
+    subgraph Layer2 ["⚡ Backend Runtime & Framework"]
+        Python["Python 3.11.9"]
+        FastAPI["FastAPI Framework"]
+        Uvicorn["Uvicorn ASGI Server"]
+    end
+
+    subgraph Layer3 ["👁️ Image Engine & AI"]
+        OpenCV["OpenCV Headless"]
+        Pillow["Pillow (PIL)"]
+        Rembg["rembg (U2-Net)"]
+        NumPy["NumPy"]
+    end
+
+    subgraph Layer4 ["🐘 Database & Persistence"]
+        PostgreSQL["PostgreSQL Cloud DB"]
+        SQLAlchemy["SQLAlchemy 2.0 ORM"]
+        Psycopg["psycopg2 / psycopg"]
+    end
+
+    subgraph Layer5 ["🔒 Security & Auth"]
+        JWT["python-jose (JWT)"]
+        Bcrypt["Passlib (Bcrypt Hashing)"]
+    end
+
+    subgraph Layer6 ["☁️ Cloud & Infrastructure"]
+        Render["Render Cloud Platform"]
+        CloudStorage["AWS S3 / Supabase Storage"]
+        Git["Git / GitHub Version Control"]
+    end
+
+    %% Relationships
+    Layer1 --> Layer2
+    Layer2 --> Layer3
+    Layer2 --> Layer4
+    Layer2 --> Layer5
+    Layer2 --> Layer6
+```
+## 📊 ความคืบหน้าโครงการ (Project Progress)
+
+> **ภาพรวมความคืบหน้าทั้งหมด (Overall Progress): 75%**
+
+| โมดูลงาน (Modules) | รายละเอียด (Tasks) | สถานะ (Status) | ความคืบหน้า (%) |
+| :--- | :--- | :---: | :---: |
+| **1. Environment & Setup** | กำหนด Python 3.11.9, Environment Variables และ Build Pipeline บน Render | ✅ เสร็จสิ้น | **100%** |
+| **2. Database & Data Layer** | เชื่อมต่อ PostgreSQL Cloud ผ่าน SQLAlchemy 2.0 และจัดการ Driver `psycopg2` | ✅ เสร็จสิ้น | **100%** |
+| **3. Security & Auth** | ระบบยืนยันตัวตน JWT Access Token และการเข้ารหัสรหัสผ่านด้วย `bcrypt` | ✅ เสร็จสิ้น | **90%** |
+| **4. Core REST API** | โครงสร้าง FastAPI Endpoints, Swagger UI (`/docs`) และการจัดการ CORS Policy | ✅ เสร็จสิ้น | **85%** |
+| **5. Image Processing Engine** | ระบบประมวลผลรูปภาพ OpenCV & Pillow (Crop, Resize, Alignment) | 🟡 กำลังพัฒนา | **70%** |
+| **6. AI & Freemium System** | ระบบ AI ลบพื้นหลัง (`rembg`) และระบบ Credit-Based Quota (Free/Pro Tier) | 🟡 วาง Schema แล้ว | **30%** |
+| **7. Cloud File Storage** | ย้ายการจัดเก็บรูปภาพความละเอียดสูงไปยัง Cloud Storage (AWS S3 / Supabase) | 🔴 วางแผนงาน | **20%** |
+
+---
+
+### 📈 รายละเอียดความคืบหน้าแยกตามฟีเจอร์หลัก
+
+- [x] **Deployment & Stability (100%)** — แก้ปัญหา Dependencies และการปรับเวอร์ชัน Python บน Render เรียบร้อย ระบบขึ้นสถานะ Live
+- [x] **Authentication & Database (95%)** — รองรับ Register, Login, JWT Token และการซิงค์ข้อมูลกับ PostgreSQL
+- [o] **Passport & ID Image Processing (70%)** — รองรับการ Crop และปรับขนาดภาพตามพรีเซ็ตมาตรฐาน
+- [o] **AI Background Removal & Color Swap (30%)** — ออกแบบ Logic Integration ร่วมกับ `rembg` และ Pillow
+- [o] **Freemium & Credit Management (30%)** — ออกแบบ Schema สำหรับจำกัดโควต้าผู้ใช้ Free (5 เครดิต) และเปิดสิทธิ์ Unlimited สำหรับ Pro
