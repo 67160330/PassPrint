@@ -31,72 +31,105 @@
 1. สามารถเข้าใช้งานผ่าน **Live Demo** ได้ทันทีที่: https://67160330.github.io/ai_autofix/
 2. หรือดาวน์โหลดไฟล์ `index.html` ไปเปิดบนเว็บเบราว์เซอร์ในเครื่องคอมพิวเตอร์ได้ทันทีโดยไม่ต้องติดตั้งแพ็กเกจเสริม
 
-## 🏗️ Technology Stack & Microservices Architecture
+## Microservices Architecture
 
 ```mermaid
 graph TD
-    %% Styling Definitions
-    classDef client fill:#f97316,stroke:#ea580c,stroke-width:2px,color:#ffffff;
-    classDef auth fill:#2563eb,stroke:#1d4ed8,stroke-width:2px,color:#ffffff;
-    classDef core fill:#0d9488,stroke:#0f766e,stroke-width:2px,color:#ffffff;
-    classDef business fill:#eab308,stroke:#ca8a04,stroke-width:2px,color:#000000;
-    classDef db fill:#475569,stroke:#334155,stroke-width:2px,color:#ffffff;
-    classDef batch fill:#16a34a,stroke:#15803d,stroke-width:2px,color:#ffffff;
-
-    subgraph Client_Layer ["📱 Client Layer"]
-        Client["Web Frontend & Mobile App<br/>(React / Flutter)"]:::client
+    %% Subgraphs
+    subgraph Clients ["📱 Client Layer"]
+        WebApp["Web Application"]
+        MobileApp["Mobile App"]
     end
 
-    subgraph Auth_Layer ["🔒 Authentication & Credit Control"]
-        AuthService["JWT Authentication Service<br/>(FastAPI, Bcrypt, python-jose)"]:::auth
-        CreditTracker["User Credits & Usage Tracker<br/>(Freemium Quota Checker)"]:::auth
+    subgraph Gateway ["🚪 Gateway & Auth Layer"]
+        APIGateway["API Gateway / Reverse Proxy"]
+        AuthSvc["Auth Service (JWT / Bcrypt)"]
+        CreditSvc["Credit & Quota Management Service"]
     end
 
-    subgraph Core_Services ["🖼️ Core Processing & AI Services"]
-        PresetService["Document Presets Catalog Service<br/>(ICAO Standards / Visa Profiles)"]:::core
-        ImageEngine["Image Processing Engine<br/>(OpenCV Headless, Pillow, NumPy)"]:::core
-        AIService["AI Background AI Service<br/>(rembg, MediaPipe AI)"]:::core
+    subgraph CoreServices ["⚙️ Core Microservices"]
+        ImageSvc["Image Processing Service (Crop/Resize)"]
+        AISvc["AI Background Removal Service (rembg)"]
+        PresetSvc["Passport Standards Catalog Service"]
+        PaymentSvc["Monetization & API Key Service"]
     end
 
-    subgraph Business_Layer ["💰 Business & Monetization Services"]
-        PricingService["Subscription & Pricing Plan Service<br/>(FastAPI, Pydantic)"]:::business
-        APIKeyService["API Key & Monetization Service<br/>(FastAPI, API Key Middleware)"]:::business
+    subgraph StorageLayer ["💾 Data & Storage Layer"]
+        MainDB[("🐘 PostgreSQL DB<br/>(Users, Credits, API Keys)")]
+        CloudStore[("☁️ Cloud Storage<br/>(S3 / Supabase Storage)")]
     end
 
-    subgraph Storage_Layer ["🐘 Database & Cloud Storage"]
-        CloudStorage[("☁️ Image Cloud Storage<br/>(AWS S3 / Supabase / Cloudinary)")]:::db
-        UserDB[("🐘 User Profile & Credits DB<br/>(PostgreSQL)")]:::db
-        PricingDB[("🐘 Pricing & API Key DB<br/>(PostgreSQL)")]:::db
-        PresetDB[("🐘 Document Standards DB<br/>(PostgreSQL)")]:::db
-        LogDB[("🐘 Usage & Transaction Logs DB<br/>(PostgreSQL)")]:::db
+    subgraph AsyncLayer ["⚡ Async & Batch Processing"]
+        EventStream["Kafka / Redis Event Stream"]
+        BatchJob["Scheduled Cleanup & Reconciliation Jobs"]
     end
 
-    subgraph Batch_Layer ["⚡ Async Stream & Batch Processing"]
-        Kafka["Async Usage Event Stream<br/>(Apache Kafka / Redis Streams)"]:::batch
-        SparkJob["Apache Spark Powered<br/>Scheduled Data Reconciliation & Cleanup Jobs"]:::batch
+    %% Flow Connections
+    WebApp --> APIGateway
+    MobileApp --> APIGateway
+
+    APIGateway --> AuthSvc
+    AuthSvc --> CreditSvc
+
+    CreditSvc --> ImageSvc
+    CreditSvc --> AISvc
+    CreditSvc --> PresetSvc
+    CreditSvc --> PaymentSvc
+
+    ImageSvc --> CloudStore
+    AISvc --> CloudStore
+    PresetSvc --> MainDB
+    PaymentSvc --> MainDB
+    CreditSvc --> MainDB
+
+    CreditSvc --> EventStream
+    EventStream --> BatchJob
+    BatchJob --> MainDB
+    BatchJob --> CloudStore
+```
+## Microservices Architecture
+
+```mermaid
+
+graph LR
+    subgraph Layer1 ["💻 Frontend & Clients"]
+        React["React.js / Web"]
+        Flutter["Flutter / Mobile"]
     end
 
-    %% Relationships / Flow
-    Client --> AuthService
-    AuthService --> CreditTracker
+    subgraph Layer2 ["⚡ Backend Runtime & Framework"]
+        Python["Python 3.11.9"]
+        FastAPI["FastAPI Framework"]
+        Uvicorn["Uvicorn ASGI Server"]
+    end
 
-    CreditTracker --> PresetService
-    CreditTracker --> ImageEngine
-    CreditTracker --> AIService
-    CreditTracker --> PricingService
-    CreditTracker --> APIKeyService
+    subgraph Layer3 ["👁️ Image Engine & AI"]
+        OpenCV["OpenCV Headless"]
+        Pillow["Pillow (PIL)"]
+        Rembg["rembg (U2-Net)"]
+        NumPy["NumPy"]
+    end
 
-    PresetService --> PresetDB
-    ImageEngine --> CloudStorage
-    AIService --> CloudStorage
+    subgraph Layer4 ["🐘 Database & Persistence"]
+        PostgreSQL["PostgreSQL Cloud DB"]
+        SQLAlchemy["SQLAlchemy 2.0 ORM"]
+        Psycopg["psycopg2 / psycopg"]
+    end
 
-    PricingService --> PricingDB
-    APIKeyService --> PricingDB
+    subgraph Layer5 ["🔒 Security & Auth"]
+        JWT["python-jose (JWT)"]
+        Bcrypt["Passlib (Bcrypt Hashing)"]
+    end
 
-    CreditTracker --> UserDB
-    CreditTracker --> Kafka
-    Kafka --> LogDB
+    subgraph Layer6 ["☁️ Cloud & Infrastructure"]
+        Render["Render Cloud Platform"]
+        CloudStorage["AWS S3 / Supabase Storage"]
+        Git["Git / GitHub Version Control"]
+    end
 
-    LogDB --> SparkJob
-    CloudStorage --> SparkJob
-    SparkJob --> UserDB
+    %% Relationships
+    Layer1 --> Layer2
+    Layer2 --> Layer3
+    Layer2 --> Layer4
+    Layer2 --> Layer5
+    Layer2 --> Layer6
