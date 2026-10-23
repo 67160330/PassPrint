@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, status
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +19,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from jose import JWTError, jwt
 
-# --- 1. IMPORT CONFIGURATIONS ---
+# --- 1. IMPORT CONFIGURATIONS & SERVICES ---
 from config import (
     DATABASE_URL,
     JWT_SECRET_KEY,
@@ -27,6 +27,7 @@ from config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     OUTPUT_DIR
 )
+from services.image_service import process_background_removal
 
 # --- 2. AUTHENTICATION HELPERS ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
@@ -107,6 +108,11 @@ class User(Base):
     role = Column(String(20), default="USER")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # --- Freemium Credit System Fields ---
+    tier = Column(String(20), default="free")                  # "free" หรือ "pro"
+    credits = Column(Integer, default=5)                    # ให้ 5 เครดิตฟรีเริ่มต้น
+    subscription_expires_at = Column(DateTime, nullable=True) # วันหมดอายุ Pro Tier
+
 class ImageHistory(Base):
     __tablename__ = "image_history"
     id = Column(Integer, primary_key=True, index=True)
@@ -152,6 +158,33 @@ def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme), db:
         return db.query(User).filter(User.username == username).first()
     except JWTError:
         return None
+
+# --- CREDIT DEDUCTION DEPENDENCY ---
+async def check_and_deduct_credit(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Dependency ตรวจสอบและหัก 1 Credit สำหรับผู้ใช้ Free"""
+    if current_user.tier == "pro":
+        if current_user.subscription_expires_at and current_user.subscription_expires_at > datetime.utcnow():
+            return current_user
+        else:
+            current_user.tier = "free"
+            db.commit()
+
+    if current_user.credits <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": "CREDIT_EXHAUSTED",
+                "message": "เครดิตฟรีของคุณหมดแล้ว กรุณาอัปเกรดเป็นสมาชิก Pro เพื่อใช้งานแบบไม่จำกัด!"
+            }
+        )
+
+    current_user.credits -= 1
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 # --- 5. FASTAPI APP & ROUTING ---
 app = FastAPI(title="PassPrint - SME Print Optimizer", version="4.0.0")
@@ -234,6 +267,7 @@ def change_password(data: ChangePassword, current_user: User = Depends(get_curre
 
 @app.get("/me", tags=["User Management"])
 def get_user_profile(current_user: User = Depends(get_current_user)):
+    remaining_credits = "Unlimited" if current_user.tier == "pro" else current_user.credits
     return {
         "status": "success",
         "data": {
@@ -241,6 +275,9 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
             "username": current_user.username,
             "email": current_user.email,
             "role": current_user.role,
+            "tier": current_user.tier,
+            "credits": remaining_credits,
+            "subscription_expires_at": current_user.subscription_expires_at.isoformat() if current_user.subscription_expires_at else None,
             "created_at": current_user.created_at.isoformat()
         }
     }
@@ -260,7 +297,6 @@ async def analyze_image(file: UploadFile = File(...)):
         ext = os.path.splitext(file.filename)[1].lower()
         issues = []
 
-        # 1. ตรวจสอบประเภทไฟล์
         if ext in ['.jpg', '.jpeg']:
             issues.append("📸 ตรวจพบไฟล์ JPEG/JPG: กำหนดใช้ Photo Denoise Pipeline")
         elif ext == '.png':
@@ -268,19 +304,16 @@ async def analyze_image(file: UploadFile = File(...)):
         else:
             issues.append("⚠️ นามสกุลไฟล์ไม่มาตรฐาน แต่ระบบจะประมวลผลด้วย Standard Engine")
 
-        # 2. ตรวจสอบขนาด/มิติภาพ
         if w < 1200 or h < 1200:
             issues.append(f"🔴 มิติภาพเริ่มต้น ({w} x {h} px) เสี่ยงต่อการแตกเมื่อพิมพ์จริง")
         else:
             issues.append(f"✅ มิติภาพเริ่มต้นอยู่ในเกณฑ์ดี ({w} x {h} px)")
 
-        # 3. ตรวจสอบโทนสีติดเหลือง (Yellow Color Cast)
         lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
         mean_b = np.mean(lab[:, :, 2]) - 128
         if mean_b > 15:
             issues.append(f"🟡 ตรวจพบโทนสีติดเหลือง (ค่า b* = +{mean_b:.1f}): อาจทำให้สีงานพิมพ์เพี้ยน")
 
-        # 4. ตรวจสอบระดับความสว่าง (Exposure/Brightness)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         mean_brightness = np.mean(gray)
         if mean_brightness < 80:
@@ -351,6 +384,47 @@ async def heal_image(
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": f"Processing error: {str(e)}"})
 
+# --- NEW AI FEATURE ENDPOINTS ---
+@app.post("/api/v1/process-background", tags=["AI Image Processing"], summary="AI ลบและเปลี่ยนสีพื้นหลัง (หัก 1 Credit)")
+async def remove_and_change_bg(
+    file: UploadFile = File(...),
+    bg_color: str = Form("#FFFFFF", description="Hex Color Code เช่น #FFFFFF, #0090FF, #E70012"),
+    current_user: User = Depends(check_and_deduct_credit)
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น")
+
+    image_bytes = await file.read()
+    output_bytes = process_background_removal(image_bytes, bg_color)
+
+    remaining_credits = "Unlimited" if current_user.tier == "pro" else str(current_user.credits)
+
+    return Response(
+        content=output_bytes,
+        media_type="image/jpeg",
+        headers={
+            "X-User-Tier": current_user.tier,
+            "X-Remaining-Credits": remaining_credits
+        }
+    )
+
+@app.post("/api/v1/user/upgrade-pro", tags=["User Management"], summary="อัปเกรดเป็นสมาชิก Pro (Unlimited)")
+async def upgrade_to_pro(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    current_user.tier = "pro"
+    current_user.subscription_expires_at = datetime.utcnow() + timedelta(days=days)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "อัปเกรดเป็นสมาชิก Pro เรียบร้อยแล้ว!",
+        "tier": current_user.tier,
+        "expires_at": current_user.subscription_expires_at.isoformat()
+    }
+
 # --- Image History APIs ---
 @app.get("/history", tags=["Image History"])
 def get_image_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -374,7 +448,6 @@ def delete_single_history(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    """ลบประวัติรูปภาพทีละ 1 รายการ"""
     record = db.query(ImageHistory).filter(
         ImageHistory.id == history_id, 
         ImageHistory.user_id == current_user.id
@@ -392,7 +465,6 @@ def clear_all_history(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    """ลบประวัติรูปภาพทั้งหมดของผู้ใช้ปัจจุบัน"""
     db.query(ImageHistory).filter(ImageHistory.user_id == current_user.id).delete()
     db.commit()
     return {"status": "success", "message": "ลบประวัติทั้งหมดเรียบร้อยแล้ว"}

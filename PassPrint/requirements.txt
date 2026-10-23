@@ -6,7 +6,9 @@ bcrypt==4.0.1
 python-jose[cryptography]
 python-multipart
 opencv-python-headless
-Pillow
+Pillow>=10.0.0
 numpy
 pydantic
 python-dotenv
+rembg>=2.0.50
+onnxruntime>=1.15.0
