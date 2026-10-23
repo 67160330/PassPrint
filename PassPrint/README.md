@@ -1,5 +1,83 @@
-🖨️ PassPrint Studio v4.0 - SME Print Optimizerระบบวิเคราะห์ เพิ่มความละเอียดไฟล์พิมพ์ และจัดการภาพสำหรับธุรกิจ SME และร้านพิมพ์ออนไลน์ ช่วยวิเคราะห์สเปกไฟล์เบื้องต้น (Pre-flight Analysis), ขยายความละเอียดภาพ 400% (4x Upscaling), ปรับแต่งภาพและลบพื้นหลังด้วยตัวเองผ่าน Canvas Studio (Magic Wand / แปรงยางลบ) และส่งออกเป็นไฟล์ PDF ความละเอียดสูง 300 DPI ที่รักษามิติพื้นหลังโปร่งใส (PNG Alpha Channel) พร้อมส่งโรงพิมพ์ได้ทันที🌐 ระบบบริการและเอกสาร API (Application Links)Web Application: http://localhost:8000Interactive API Documentation (Swagger UI): http://localhost:8000/docsReDoc API Documentation: http://localhost:8000/redoc✨ ฟีเจอร์หลัก (Key Features)🤖 Mode 1: OpenCV Auto Engine (ใช้งานฟรีไม่จำกัด)ขยายข้อมูลภาพ 400% ด้วย INTER_LANCZOS4 Interpolationดึงความคมชัดขอบภาพและตัวอักษรด้วย Unsharp Masking (Soft Sharpening)ลดเม็ดบีบอัด/Noise ด้วย Bilateral Filterตัวเลือกปรับเร่งมิติสีสดใสด้วย HSV Color Space🎨 Mode 2: Interactive Canvas Studio (โควตาฟรี 7 รอบ/วัน)✨ Magic Wand (คลิกดูดลบสีพื้นหลัง): คลิกเมาส์ลบสีพื้นหลังให้อัตโนมัติด้วยอัลกอริทึม Flood Fill พร้อมสไลเดอร์ปรับค่าความไว (Tolerance)🧹 แปรงยางลบ (Eraser Brush): ปรับขนาดหัวแปรงขูดลบส่วนที่ไม่ต้องการออกได้เอง↺/↻ Undo & Redo System: ระบบย้อนกลับและทำซ้ำประวัติการแต่งรูป (รองรับคีย์ลัด Ctrl+Z / Ctrl+Y)🖼️ Transform & Color Grading: หมุนภาพ 90°, กลับภาพซ้าย-ขวา/บน-ล่าง และปรับ Brightness / Contrast / Saturation🔄 Change Image: ปุ่มเปลี่ยนรูปภาพใหม่เข้าสู่กระดานแต่งรูปได้ทันทีโดยไม่ต้องโหลดหน้าเว็บใหม่🏁 PNG Transparency & 300 DPI Export: รองรับการรักษาช่องสีโปร่งใส (4-Channel BGRA Alpha Channel) และส่งออกไฟล์ PDF 300 DPI💳 Daily Reset Credit System: ระบบโควตาสำหรับสาย Free Tier (7 เครดิต/วัน) โดยระบบจะหักเครดิตเมื่อใช้งานโหมดแต่งรูป Canvas Studio และรีเซ็ตกลับเป็น 7 เครดิตให้อัตโนมัติเมื่อเข้าใช้งานในวันถัดไป📜 Image History & Account Management: ดูประวัติการแต่งรูปรวมถึงดาวน์โหลดไฟล์ย้อนหลัง (PNG/PDF) และระบบลบบัญชีผู้ใช้พร้อมข้อมูลล้างระบบ🛠️ Tech StackBackend: Python 3.12, FastAPI, PostgreSQL, SQLAlchemy, OpenCV (opencv-python-headless), Pillow (PIL), NumPy, Uvicorn, Bcrypt, PyJWTFrontend: HTML5, Tailwind CSS, JavaScript (Vanilla ES6 Canvas API)Containerization: Docker, Docker Compose (FastAPI Web + PostgreSQL + pgAdmin)🚀 วิธีการติดตั้งและรันใช้งาน (Getting Started)รันด้วย Docker Compose (แนะนำ)docker-compose up -d --build
-ระบบจะทำการ Build Container ของทั้ง Web Application (FastAPI), Database Service (PostgreSQL) และ pgAdmin พร้อมเปิดให้บริการที่พอร์ต 8000 อัตโนมัติ📡 REST API Documentation Overview1. Auto Processing & Pre-flight AnalysisPOST /analyze - สแกนวิเคราะห์ขนาดภาพและความหนาแน่น DPIPOST /heal-auto - ขยายภาพ 400% และเพิ่มความคมชัดด้วย OpenCV อัตโนมัติ (ฟรีไม่จำกัด)2. Canvas Processing (หัก 1 Credit)POST /heal (หรือ /process) - ประมวลผลภาพจาก Canvas Studio ขยาย 400% และบันทึกประวัติลงฐานข้อมูล3. Authentication & Account ManagementPOST /register - สมัครสมาชิกใหม่POST /login - เข้าสู่ระบบและรับ Access TokenGET /me - ดึงข้อมูลโปรไฟล์ผู้ใช้ และรีเซ็ตโควตาประจำวัน (7/7)DELETE /account - ลบบัญชีผู้ใช้และประวัติภาพทั้งหมดออกจากฐานข้อมูล4. Image History ManagementGET /history - ดึงรายการประวัติรูปภาพที่เคยประมวลผลของผู้ใช้DELETE /history/{history_id} - ลบรายการประวัติภาพตาม ID🏗️ Architecture DiagramsSystem Architecture Workflowgraph TD
+# 🖨️ PassPrint Studio v4.0 - SME Print Optimizer
+
+ระบบวิเคราะห์ เพิ่มความละเอียดไฟล์พิมพ์ และจัดการภาพสำหรับธุรกิจ SME และร้านพิมพ์ออนไลน์ ช่วยวิเคราะห์สเปกไฟล์เบื้องต้น (Pre-flight Analysis), ขยายความละเอียดภาพ 400% (4x Upscaling), ปรับแต่งภาพและลบพื้นหลังด้วยตัวเองผ่าน Canvas Studio (Magic Wand / แปรงยางลบ) และส่งออกเป็นไฟล์ PDF ความละเอียดสูง 300 DPI ที่รักษามิติพื้นหลังโปร่งใส (PNG Alpha Channel) พร้อมส่งโรงพิมพ์ได้ทันที
+
+---
+
+## 🌐 ระบบบริการและเอกสาร API (Application Links)
+
+- **Web Application:** `http://localhost:8000`
+- **Interactive API Documentation (Swagger UI):** `http://localhost:8000/docs`
+- **ReDoc API Documentation:** `http://localhost:8000/redoc`
+
+---
+
+## ✨ ฟีเจอร์หลัก (Key Features)
+
+- 🤖 **Mode 1: OpenCV Auto Engine (ใช้งานฟรีไม่จำกัด)**
+  - ขยายข้อมูลภาพ 400% ด้วย **INTER_LANCZOS4 Interpolation**
+  - ดึงความคมชัดขอบภาพและตัวอักษรด้วย **Unsharp Masking (Soft Sharpening)**
+  - ลดเม็ดบีบอัด/Noise ด้วย **Bilateral Filter**
+  - ตัวเลือกปรับเร่งมิติสีสดใสด้วย **HSV Color Space**
+- 🎨 **Mode 2: Interactive Canvas Studio (โควตาฟรี 7 รอบ/วัน)**
+  - **✨ Magic Wand (คลิกดูดลบสีพื้นหลัง):** คลิกเมาส์ลบสีพื้นหลังให้อัตโนมัติด้วยอัลกอริทึม Flood Fill พร้อมสไลเดอร์ปรับค่าความไว (Tolerance)
+  - **🧹 แปรงยางลบ (Eraser Brush):** ปรับขนาดหัวแปรงขูดลบส่วนที่ไม่ต้องการออกได้เอง
+  - **↺/↻ Undo & Redo System:** ระบบย้อนกลับและทำซ้ำประวัติการแต่งรูป (รองรับคีย์ลัด `Ctrl+Z` / `Ctrl+Y`)
+  - **🖼️ Transform & Color Grading:** หมุนภาพ 90°, กลับภาพซ้าย-ขวา/บน-ล่าง และปรับ Brightness / Contrast / Saturation
+  - **🔄 Change Image:** ปุ่มเปลี่ยนรูปภาพใหม่เข้าสู่กระดานแต่งรูปได้ทันทีโดยไม่ต้องโหลดหน้าเว็บใหม่
+- 🏁 **PNG Transparency & 300 DPI Export:** รองรับการรักษาช่องสีโปร่งใส (4-Channel BGRA Alpha Channel) และส่งออกไฟล์ PDF 300 DPI
+- 💳 **Daily Reset Credit System:** ระบบโควตาสำหรับสาย Free Tier (7 เครดิต/วัน) โดยระบบจะหักเครดิตเมื่อใช้งานโหมดแต่งรูป Canvas Studio และรีเซ็ตกลับเป็น 7 เครดิตให้อัตโนมัติเมื่อเข้าใช้งานในวันถัดไป
+- 📜 **Image History & Account Management:** ดูประวัติการแต่งรูปรวมถึงดาวน์โหลดไฟล์ย้อนหลัง (PNG/PDF) และระบบลบบัญชีผู้ใช้พร้อมข้อมูลล้างระบบ
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend:** Python 3.12, FastAPI, PostgreSQL, SQLAlchemy, OpenCV (`opencv-python-headless`), Pillow (PIL), NumPy, Uvicorn, Bcrypt, PyJWT
+- **Frontend:** HTML5, Tailwind CSS, JavaScript (Vanilla ES6 Canvas API)
+- **Containerization:** Docker, Docker Compose (FastAPI Web + PostgreSQL + pgAdmin)
+
+---
+
+## 🚀 วิธีการติดตั้งและรันใช้งาน (Getting Started)
+
+### รันด้วย Docker Compose (แนะนำ)
+
+```bash
+docker-compose up -d --build
+```
+
+ระบบจะทำการ Build Container ของทั้ง Web Application (FastAPI), Database Service (PostgreSQL) และ pgAdmin พร้อมเปิดให้บริการที่พอร์ต **`8000`** อัตโนมัติ
+
+---
+
+## 📡 REST API Documentation Overview
+
+### 1. Auto Processing & Pre-flight Analysis
+* **`POST /analyze`** - สแกนวิเคราะห์ขนาดภาพและความหนาแน่น DPI
+* **`POST /heal-auto`** - ขยายภาพ 400% และเพิ่มความคมชัดด้วย OpenCV อัตโนมัติ (ฟรีไม่จำกัด)
+
+### 2. Canvas Processing (หัก 1 Credit)
+* **`POST /heal`** (หรือ `/process`) - ประมวลผลภาพจาก Canvas Studio ขยาย 400% และบันทึกประวัติลงฐานข้อมูล
+
+### 3. Authentication & Account Management
+* **`POST /register`** - สมัครสมาชิกใหม่
+* **`POST /login`** - เข้าสู่ระบบและรับ Access Token
+* **`GET /me`** - ดึงข้อมูลโปรไฟล์ผู้ใช้ และรีเซ็ตโควตาประจำวัน (7/7)
+* **`DELETE /account`** - ลบบัญชีผู้ใช้และประวัติภาพทั้งหมดออกจากฐานข้อมูล
+
+### 4. Image History Management
+* **`GET /history`** - ดึงรายการประวัติรูปภาพที่เคยประมวลผลของผู้ใช้
+* **`DELETE /history/{history_id}`** - ลบรายการประวัติภาพตาม ID
+
+---
+
+## 🏗️ Architecture Diagrams
+
+### System Architecture Workflow
+
+```mermaid
+graph TD
     subgraph Clients ["📱 Client Layer"]
         WebApp["Web Client (HTML5 Canvas + Tailwind)"]
     end
@@ -33,7 +111,14 @@
 
     ExportEngine --> LocalStore
     CreditSvc --> MainDB
-Technology Stack Diagramgraph LR
+```
+
+---
+
+### Technology Stack Diagram
+
+```mermaid
+graph LR
     subgraph Layer1 ["💻 Frontend"]
         HTML5["HTML5 / Canvas API"]
         Tailwind["Tailwind CSS"]
@@ -61,7 +146,14 @@ Technology Stack Diagramgraph LR
     Layer1 --> Layer2
     Layer2 --> Layer3
     Layer2 --> Layer4
-📂 โครงสร้างโฟลเดอร์โปรเจกต์ (Project Structure).
+```
+
+---
+
+## 📂 โครงสร้างโฟลเดอร์โปรเจกต์ (Project Structure)
+
+```text
+.
 ├── fixed_files/          # โฟลเดอร์จัดเก็บไฟล์ภาพ PNG และ PDF ที่ประมวลผลแล้ว
 ├── Dockerfile            # คอนฟิกการสร้าง Docker Image (Python 3.12-slim)
 ├── docker-compose.yml    # คอนฟิกการรันบริการ Docker (FastAPI Web + PostgreSQL DB + pgAdmin)
@@ -69,4 +161,20 @@ Technology Stack Diagramgraph LR
 ├── main.py               # โค้ด Backend API Engine หลัก (FastAPI v4.0.0)
 ├── requirements.txt      # รายชื่อไลบรารี Python Dependencies
 └── README.md             # เอกสารอธิบายรายละเอียดโปรเจกต์
-📊 ความคืบหน้าโครงการ (Project Progress)ภาพรวมความคืบหน้าทั้งหมด (Overall Progress): 85%โมดูลงาน (Modules)รายละเอียด (Tasks)สถานะ (Status)ความคืบหน้า (%)1. Environment & Setupคอนฟิก Docker Compose, FastAPI, PostgreSQL และ pgAdmin✅ เสร็จสิ้น100%2. Database & Data Layerออกแบบ Schema ผู้ใช้ (users) และประวัติภาพ (image_histories)✅ เสร็จสิ้น100%3. Security & Accountระบบ JWT Authentication, Bcrypt Hashing และระบบลบบัญชีผู้ใช้ (DELETE /account)✅ เสร็จสิ้น100%4. OpenCV Auto Engineขยายภาพ 400% (INTER_LANCZOS4), Bilateral Filter และ Unsharp Masking✅ เสร็จสิ้น100%5. Interactive Canvas Studioระบบลบสีพื้นหลังเป็น PNG โปร่งใส (Magic Wand Flood-fill), แปรงยางลบ, ปรับแสงสี, เปลี่ยนรูป และ Undo/Redo Stack✅ เสร็จสิ้น100%6. Daily Credit Systemระบบจำกัดโควตาฟรี 7 รอบ/วัน พร้อมรีเซ็ตอัตโนมัติเมื่อเข้าสู่สัปดาห์/วันใหม่✅ เสร็จสิ้น100%7. Payment & Monetizationระบบชำระเงินจริง (PromptPay QR Code / Payment Gateway) และสมาชิกระดับ PRO🔴 วางแผนพัฒนา20%
+```
+
+---
+
+## 📊 ความคืบหน้าโครงการ (Project Progress)
+
+> **ภาพรวมความคืบหน้าทั้งหมด (Overall Progress): 85%**
+
+| โมดูลงาน (Modules) | รายละเอียด (Tasks) | สถานะ (Status) | ความคืบหน้า (%) |
+| :--- | :--- | :---: | :---: |
+| **1. Environment & Setup** | คอนฟิก Docker Compose, FastAPI, PostgreSQL และ pgAdmin | ✅ เสร็จสิ้น | **100%** |
+| **2. Database & Data Layer** | ออกแบบ Schema ผู้ใช้ (`users`) และประวัติภาพ (`image_histories`) | ✅ เสร็จสิ้น | **100%** |
+| **3. Security & Account** | ระบบ JWT Authentication, Bcrypt Hashing และระบบลบบัญชีผู้ใช้ (`DELETE /account`) | ✅ เสร็จสิ้น | **100%** |
+| **4. OpenCV Auto Engine** | ขยายภาพ 400% (INTER_LANCZOS4), Bilateral Filter และ Unsharp Masking | ✅ เสร็จสิ้น | **100%** |
+| **5. Interactive Canvas Studio** | ระบบลบสีพื้นหลังเป็น PNG โปร่งใส (Magic Wand Flood-fill), แปรงยางลบ, ปรับแสงสี, เปลี่ยนรูป และ Undo/Redo Stack | ✅ เสร็จสิ้น | **100%** |
+| **6. Daily Credit System** | ระบบจำกัดโควตาฟรี 7 รอบ/วัน พร้อมรีเซ็ตอัตโนมัติเมื่อเข้าสู่สัปดาห์/วันใหม่ | ✅ เสร็จสิ้น | **100%** |
+| **7. Payment & Monetization** | ระบบชำระเงินจริง (PromptPay QR Code / Payment Gateway) และสมาชิกระดับ PRO | 🔴 วางแผนพัฒนา | **20%** |
