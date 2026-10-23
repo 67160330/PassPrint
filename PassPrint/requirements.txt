@@ -10,5 +10,4 @@ Pillow>=10.0.0
 numpy
 pydantic
 python-dotenv
-rembg>=2.0.50
-onnxruntime>=1.15.0
+reportlab
