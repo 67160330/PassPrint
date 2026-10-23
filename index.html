@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassPrint Studio - SME Print Optimizer v4.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .transparent-bg {
+            background-image: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen font-sans">
+
+    <input type="file" id="changeFileInput" class="hidden" accept="image/*">
+
+    <!-- Modal ประวัติภาพ -->
+    <div id="historyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[#111827] border border-slate-800 w-full max-w-3xl rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                <h3 class="font-bold text-lg text-indigo-400 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการแต่งรูปภาพ
+                </h3>
+                <button onclick="toggleHistoryModal(false)" class="text-slate-400 hover:text-slate-200 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div id="historyGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-1">
+                <!-- รายการประวัติจะถูกแสดงที่นี่ผ่าน JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#111827] border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="bg-indigo-600/20 text-indigo-400 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-sliders text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold">PassPrint Studio</h2>
+                <p class="text-xs text-slate-400 mt-1">SME Print Optimizer • กรุณาเข้าสู่ระบบก่อนเริ่มใช้งาน</p>
+            </div>
+
+            <div class="flex border-b border-slate-800 mb-6">
+                <button id="tabLoginBtn" onclick="switchAuthTab('login')" class="flex-1 py-2 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400">เข้าสู่ระบบ</button>
+                <button id="tabRegisterBtn" onclick="switchAuthTab('register')" class="flex-1 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">สมัครสมาชิก</button>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Username</label>
+                    <input type="text" id="loginUsername" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <button type="submit" id="loginSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition mt-2">เข้าสู่ระบบ</button>
+            </form>
+
+            <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Username</label>
+                    <input type="text" id="regUsername" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Email</label>
+                    <input type="email" id="regEmail" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                    <input type="password" id="regPassword" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <button type="submit" id="regSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition mt-2">สร้างบัญชีผู้ใช้</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">PassPrint Studio</h1>
+                    <p class="text-xs text-slate-400">OpenCV Auto Engine & Interactive Studio</p>
+                </div>
+            </div>
+            <div id="userInfo" class="flex items-center space-x-3 text-sm"></div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        <div class="flex bg-[#111827] border border-slate-800 rounded-2xl p-1.5 mb-6 max-w-xl mx-auto shadow-lg">
+            <button id="modeAutoBtn" onclick="switchMode('auto')" class="flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow">
+                <i class="fa-solid fa-robot"></i> 1. ให้ OpenCV ปรับให้อัตโนมัติ (ฟรี)
+            </button>
+            <button id="modeCanvasBtn" onclick="switchMode('canvas')" class="flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-palette"></i> 2. แต่งรูปเอง (โควตา 7 รอบ/วัน)
+            </button>
+        </div>
+
+        <!-- MODE 1: AUTO OPENCV -->
+        <div id="autoModeSection" class="space-y-6">
+            <div class="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div id="autoDropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-8 text-center transition cursor-pointer bg-slate-900/40">
+                    <input type="file" id="autoFileInput" class="hidden" accept="image/*">
+                    <div class="bg-indigo-600/20 text-indigo-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                    </div>
+                    <p class="font-medium text-base mb-1">คลิก หรือ ลากไฟล์รูปภาพเพื่อให้อัตโนมัติ</p>
+                    <p class="text-xs text-slate-500">รองรับ JPG, PNG (ขยาย 400% + ปรับความคมชัดอัตโนมัติ - ใช้งานฟรีไม่จำกัด)</p>
+                    <p id="autoFileName" class="mt-3 text-sm text-indigo-400 font-semibold hidden"></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">เลือกโหมดการปรับแต่งของ OpenCV:</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="relative border border-slate-800 bg-slate-900/50 p-4 rounded-xl cursor-pointer hover:border-indigo-500 transition flex items-start space-x-3">
+                            <input type="radio" name="autoOption" value="sharp" checked class="mt-1 accent-indigo-500">
+                            <div>
+                                <div class="font-bold text-sm text-slate-200">🎯 คมชัดอย่างเดียว (คงสีเดิม)</div>
+                                <div class="text-xs text-slate-400 mt-1">ขยาย 4x + Denoise + เพิ่มความคมชัดด้วย Unsharp Masking</div>
+                            </div>
+                        </label>
+
+                        <label class="relative border border-slate-800 bg-slate-900/50 p-4 rounded-xl cursor-pointer hover:border-indigo-500 transition flex items-start space-x-3">
+                            <input type="radio" name="autoOption" value="color" class="mt-1 accent-indigo-500">
+                            <div>
+                                <div class="font-bold text-sm text-slate-200">🎨 คมชัด + ปรับเร่งสีสด</div>
+                                <div class="text-xs text-slate-400 mt-1">ขยาย 4x + เพิ่มความคมชัด + ปรับเพิ่ม Saturation & Contrast</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <button id="autoProcessBtn" onclick="processAutoOpenCV()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-indigo-600/25 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>ประมวลผลด้วย OpenCV (ใช้งานฟรี)</span>
+                </button>
+            </div>
+
+            <div id="autoResultBox" class="hidden bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div id="sliderContainer" class="relative w-full h-80 md:h-96 rounded-xl overflow-hidden border border-slate-800 transparent-bg select-none flex items-center justify-center">
+                    <img id="resultImg" class="absolute inset-0 w-full h-full object-contain pointer-events-none" src="" alt="After">
+                    <img id="beforeImg" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" style="clip-path: inset(0 50% 0 0);" src="" alt="Before">
+                    <div id="sliderLine" class="absolute top-0 bottom-0 left-1/2 w-0.5 bg-indigo-500 pointer-events-none z-20 flex items-center justify-center -translate-x-1/2">
+                        <div class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                        </div>
+                    </div>
+                    <input type="range" min="0" max="100" value="50" oninput="updateComparisonSlider(this.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30">
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-800">
+                    <div id="autoResultInfo" class="text-xs text-slate-300 space-y-1"></div>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <a id="autoDownloadPngBtn" href="" download class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-5 rounded-xl transition flex items-center justify-center gap-2 text-xs md:text-sm">
+                            <i class="fa-solid fa-file-image"></i> ดาวน์โหลด PNG
+                        </a>
+                        <a id="autoDownloadBtn" href="" download class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-xl transition flex items-center justify-center gap-2 text-xs md:text-sm">
+                            <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลด PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODE 2: INTERACTIVE CANVAS STUDIO -->
+        <div id="canvasModeSection" class="hidden space-y-6">
+            <div id="uploadSection" class="bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-4">
+                <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-12 transition cursor-pointer bg-slate-900/40">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*">
+                    <div class="bg-indigo-600/20 text-indigo-400 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-white mb-1">อัปโหลดไฟล์รูปภาพเพื่อเริ่มแต่งรูป</h3>
+                    <p class="text-xs text-slate-400">แต่งแสง/สี หมุนภาพ คลิกดูดสีลบพื้นหลัง/แปรงยางลบ (โควตาฟรีวันละ 7 รอบ)</p>
+                </div>
+            </div>
+
+            <div id="editorSection" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center relative min-h-[450px]">
+                    <div class="w-full flex items-center justify-between mb-4 pb-3 border-b border-slate-800 flex-wrap gap-2">
+                        <span class="text-xs text-slate-400 font-semibold flex items-center">
+                            <i class="fa-solid fa-palette text-indigo-400 mr-2"></i>กระดานแต่งรูป (Canvas Studio)
+                        </span>
+                        
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button id="undoBtn" onclick="undo()" disabled class="text-xs text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-white transition flex items-center gap-1 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg font-semibold">
+                                <i class="fa-solid fa-rotate-left"></i> เลิกทำ
+                            </button>
+                            <button id="redoBtn" onclick="redo()" disabled class="text-xs text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-white transition flex items-center gap-1 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg font-semibold">
+                                <i class="fa-solid fa-rotate-right"></i> ทำซ้ำ
+                            </button>
+                            <button onclick="triggerChangeImage()" class="text-xs text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1 bg-indigo-950/50 border border-indigo-800/50 px-2.5 py-1.5 rounded-lg font-semibold">
+                                <i class="fa-solid fa-image"></i> เปลี่ยนรูปภาพ
+                            </button>
+                            <button onclick="resetEditor()" class="text-xs text-slate-400 hover:text-red-400 transition flex items-center gap-1 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg font-semibold">
+                                <i class="fa-solid fa-arrow-rotate-left"></i> รีเซ็ตภาพเดิม
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative max-w-full overflow-hidden flex items-center justify-center transparent-bg rounded-xl border border-slate-800 p-2 shadow-inner">
+                        <canvas id="mainCanvas" class="max-w-full max-h-[500px] object-contain rounded cursor-crosshair"></canvas>
+                    </div>
+
+                    <div id="eraserTip" class="hidden mt-3 text-center text-xs text-amber-400 bg-amber-950/40 border border-amber-800/50 px-3 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-hand-pointer mr-1"></i>คลิกลากเมาส์บนรูปเพื่อถูแปรงลบส่วนที่ไม่ต้องการออก (กด Ctrl+Z เพื่อย้อนกลับได้)
+                    </div>
+                    <div id="wandTip" class="hidden mt-3 text-center text-xs text-indigo-300 bg-indigo-950/40 border border-indigo-800/50 px-3 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>คลิกเมาส์ที่สีพื้นหลังเพื่อลบเป็น PNG โปร่งใส (กด Ctrl+Z เพื่อย้อนกลับได้)
+                    </div>
+                </div>
+
+                <div class="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">เครื่องมือ (Tools)</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button id="toolMoveBtn" onclick="setTool('move')" class="py-2 px-2 rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 font-bold text-xs flex items-center justify-center gap-1 transition">
+                                <i class="fa-solid fa-sliders"></i> ปรับสี/หมุน
+                            </button>
+                            <button id="toolWandBtn" onclick="setTool('wand')" class="py-2 px-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1 hover:border-slate-700 transition">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> คลิกดูดลบสี
+                            </button>
+                            <button id="toolEraserBtn" onclick="setTool('eraser')" class="py-2 px-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1 hover:border-slate-700 transition">
+                                <i class="fa-solid fa-eraser"></i> แปรงยางลบ
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="wandControls" class="hidden space-y-3 bg-indigo-950/30 border border-indigo-800/40 p-3.5 rounded-xl">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-indigo-300">ความไวการลบสี (Tolerance):</span>
+                            <span id="toleranceVal" class="text-indigo-400 font-mono">30</span>
+                        </div>
+                        <input type="range" id="toleranceRange" min="1" max="120" value="30" oninput="document.getElementById('toleranceVal').innerText = this.value" class="w-full accent-indigo-500">
+                    </div>
+
+                    <div id="eraserControls" class="hidden space-y-3 bg-amber-950/20 border border-amber-900/40 p-3.5 rounded-xl">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-amber-300">ขนาดหัวแปรงยางลบ:</span>
+                            <span id="brushSizeVal" class="text-amber-400 font-mono">30 px</span>
+                        </div>
+                        <input type="range" id="brushSize" min="5" max="100" value="30" oninput="document.getElementById('brushSizeVal').innerText = this.value + ' px'" class="w-full accent-amber-500">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">หมุน & กลับด้าน (Transform)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="rotateImage(90)" class="py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition">
+                                <i class="fa-solid fa-rotate-right mr-1"></i>หมุน 90°
+                            </button>
+                            <button onclick="flipImage('h')" class="py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition">
+                                <i class="fa-solid fa-arrows-left-right mr-1"></i>กลับซ้ายขวา
+                            </button>
+                            <button onclick="flipImage('v')" class="py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition">
+                                <i class="fa-solid fa-arrows-up-down mr-1"></i>กลับบนล่าง
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 pt-2 border-t border-slate-800">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">ปรับแสงและโทนสี (Color Grading)</label>
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span><i class="fa-solid fa-sun mr-1 text-amber-400"></i>ความสว่าง (Brightness)</span>
+                                <span id="brightVal" class="font-mono text-slate-400">0</span>
+                            </div>
+                            <input type="range" id="brightRange" min="-100" max="100" value="0" onchange="pushHistory(); applyFilters();" oninput="applyFilters()" class="w-full accent-indigo-500">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span><i class="fa-solid fa-circle-half-stroke mr-1 text-indigo-400"></i>ความจัดของมิติสี (Contrast)</span>
+                                <span id="contrastVal" class="font-mono text-slate-400">0</span>
+                            </div>
+                            <input type="range" id="contrastRange" min="-100" max="100" value="0" onchange="pushHistory(); applyFilters();" oninput="applyFilters()" class="w-full accent-indigo-500">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span><i class="fa-solid fa-droplet mr-1 text-emerald-400"></i>ความสดของสี (Saturation)</span>
+                                <span id="saturateVal" class="font-mono text-slate-400">0</span>
+                            </div>
+                            <input type="range" id="saturateRange" min="-100" max="100" value="0" onchange="pushHistory(); applyFilters();" oninput="applyFilters()" class="w-full accent-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800">
+                        <button id="exportBtn" onclick="exportToPrintEngine()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>ประมวลผลรูปภาพ (หัก 1 Credit)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultBox" class="hidden bg-[#111827] border border-emerald-500/40 rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div class="text-emerald-400 font-bold text-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check text-2xl"></i>
+                    <span>ส่งพิมพ์สำเร็จ!</span>
+                </div>
+                <p class="text-xs text-slate-300">ขยายความรายละเอียด 400% ด้วย OpenCV + Unsharp Masking รักษามิติโปร่งใสเรียบร้อยแล้ว</p>
+                <div class="pt-2 flex justify-center gap-3">
+                    <a id="downloadPngBtn" href="" download class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-image"></i> ดาวน์โหลดรูป PNG
+                    </a>
+                    <a id="downloadPdfBtn" href="" download class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลด PDF (300 DPI)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const authModal = document.getElementById('authModal');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const historyModal = document.getElementById('historyModal');
+
+        function switchAuthTab(tab) {
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                tabLoginBtn.className = "flex-1 py-2 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400";
+                tabRegisterBtn.className = "flex-1 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                tabRegisterBtn.className = "flex-1 py-2 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400";
+                tabLoginBtn.className = "flex-1 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            }
+        }
+
+        async function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                authModal.classList.remove('hidden');
+                return;
+            }
+            try {
+                const res = await fetch('/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const user = data.data || data;
+                    authModal.classList.add('hidden');
+
+                    const creditBadge = user.tier === 'pro'
+                        ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-bold text-xs"><i class="fa-solid fa-crown mr-1"></i>PRO</span>`
+                        : `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full font-bold text-xs"><i class="fa-solid fa-coins mr-1"></i>โควตาแต่งรูปเอง: ${user.credits !== undefined ? user.credits : 7}/7</span>`;
+
+                    document.getElementById('userInfo').innerHTML = `
+                        ${creditBadge}
+                        <button onclick="toggleHistoryModal(true)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 px-3 py-1 rounded-xl text-xs font-semibold transition flex items-center gap-1">
+                            <i class="fa-solid fa-clock-rotate-left"></i> ประวัติภาพ
+                        </button>
+                        <span class="font-semibold text-slate-200"><i class="fa-solid fa-user text-slate-400 mr-1"></i>${user.username}</span>
+                        <button onclick="handleDeleteAccount()" class="text-slate-500 hover:text-red-500 ml-1 transition" title="ลบบัญชีผู้ใช้"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        <button onclick="logout()" class="text-slate-400 hover:text-red-400 ml-1 transition" title="ออกจากระบบ"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    `;
+                } else {
+                    logout();
+                }
+            } catch (e) {
+                authModal.classList.remove('hidden');
+            }
+        }
+        checkAuth();
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.access_token) {
+                    localStorage.setItem('token', data.access_token);
+                    checkAuth();
+                } else {
+                    let msg = 'เข้าสู่ระบบไม่สำเร็จ';
+                    if (typeof data.detail === 'string') msg = data.detail;
+                    alert(msg);
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('regUsername').value,
+                        email: document.getElementById('regEmail').value,
+                        password: document.getElementById('regPassword').value
+                    })
+                });
+                if (res.ok) {
+                    alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+                    switchAuthTab('login');
+                } else {
+                    alert('ไม่สามารถสร้างบัญชีได้');
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาด');
+            }
+        }
+
+        async function handleDeleteAccount() {
+            if (confirm('⚠️ คุณแน่ใจหรือไม่ที่จะลบบัญชีนี้?\nการลบจะทำให้ประวัติภาพทั้งหมดถูกลบทิ้ง และไม่สามารถกู้คืนได้!')) {
+                const token = localStorage.getItem('token');
+                try {
+                    const res = await fetch('/account', {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        alert('ลบบัญชีเรียบร้อยแล้ว');
+                        logout();
+                    } else {
+                        alert('ไม่สามารถลบบัญชีได้');
+                    }
+                } catch (e) {
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                }
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            authModal.classList.remove('hidden');
+        }
+
+        function switchMode(mode) {
+            const modeAutoBtn = document.getElementById('modeAutoBtn');
+            const modeCanvasBtn = document.getElementById('modeCanvasBtn');
+            const autoModeSection = document.getElementById('autoModeSection');
+            const canvasModeSection = document.getElementById('canvasModeSection');
+
+            if (mode === 'auto') {
+                autoModeSection.classList.remove('hidden');
+                canvasModeSection.classList.add('hidden');
+                modeAutoBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow";
+                modeCanvasBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+            } else {
+                canvasModeSection.classList.remove('hidden');
+                autoModeSection.classList.add('hidden');
+                modeCanvasBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow";
+                modeAutoBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-xs md:text-sm transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+            }
+        }
+
+        // --- HISTORY SYSTEM ---
+        async function toggleHistoryModal(show) {
+            if (show) {
+                await loadHistory();
+                historyModal.classList.remove('hidden');
+            } else {
+                historyModal.classList.add('hidden');
+            }
+        }
+
+        async function loadHistory() {
+            const token = localStorage.getItem('token');
+            const grid = document.getElementById('historyGrid');
+            grid.innerHTML = '<p class="text-xs text-slate-400 col-span-full text-center py-8"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดประวัติภาพ...</p>';
+
+            try {
+                const res = await fetch('/history', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                
+                if (res.ok && data.data && data.data.length > 0) {
+                    grid.innerHTML = data.data.map(item => `
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2 relative group">
+                            <div class="w-full h-36 rounded-lg overflow-hidden transparent-bg flex items-center justify-center border border-slate-800">
+                                <img src="${item.preview_url}" class="max-w-full max-h-full object-contain">
+                            </div>
+                            <div class="text-[10px] text-slate-400 flex justify-between items-center">
+                                <span><i class="fa-solid fa-calendar-day mr-1"></i>${item.created_at}</span>
+                                <button onclick="deleteHistoryItem(${item.id})" class="text-slate-500 hover:text-red-400 transition" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1.5 pt-1">
+                                <a href="${item.preview_url}" download class="bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 text-indigo-200 text-[11px] font-bold py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-image"></i> PNG
+                                </a>
+                                <a href="${item.pdf_url}" download class="bg-emerald-600/30 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-file-pdf"></i> PDF
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<p class="text-xs text-slate-500 col-span-full text-center py-8"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>ยังไม่มีประวัติการแต่งรูปภาพ</p>';
+                }
+            } catch (e) {
+                grid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-8">เกิดข้อผิดพลาดในการดึงข้อมูล</p>';
+            }
+        }
+
+        async function deleteHistoryItem(id) {
+            if (!confirm('ต้องการลบประวัติภาพนี้หรือไม่?')) return;
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`/history/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) loadHistory();
+            } catch (e) {}
+        }
+
+        // --- MODE 1: AUTO OPENCV ---
+        let currentAutoFile = null;
+        const autoFileInput = document.getElementById('autoFileInput');
+        const autoDropZone = document.getElementById('autoDropZone');
+        const autoFileName = document.getElementById('autoFileName');
+
+        autoDropZone.onclick = () => autoFileInput.click();
+        autoFileInput.onchange = (e) => {
+            if (e.target.files.length) {
+                currentAutoFile = e.target.files[0];
+                autoFileName.innerText = `ไฟล์ที่เลือก: ${currentAutoFile.name}`;
+                autoFileName.classList.remove('hidden');
+            }
+        };
+
+        function updateComparisonSlider(val) {
+            document.getElementById('beforeImg').style.clipPath = `inset(0 ${100 - val}% 0 0)`;
+            document.getElementById('sliderLine').style.left = `${val}%`;
+        }
+
+        async function processAutoOpenCV() {
+            if (!currentAutoFile) return alert('กรุณาเลือกไฟล์รูปภาพก่อนครับ');
+            const opt = document.querySelector('input[name="autoOption"]:checked').value;
+
+            const btn = document.getElementById('autoProcessBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>กำลังประมวลผลผ่าน OpenCV...</span>';
+
+            document.getElementById('beforeImg').src = URL.createObjectURL(currentAutoFile);
+
+            const formData = new FormData();
+            formData.append('file', currentAutoFile);
+            formData.append('adjust_color', opt === 'color' ? 'true' : 'false');
+
+            try {
+                const res = await fetch('/heal-auto', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    document.getElementById('resultImg').src = data.preview_url;
+                    document.getElementById('autoDownloadPngBtn').href = data.preview_url;
+                    document.getElementById('autoDownloadBtn').href = data.pdf_url;
+                    document.getElementById('autoResultInfo').innerHTML = `
+                        <p><b>มิติเดิม:</b> ${data.original_resolution}</p>
+                        <p><b>มิติใหม่หลัง OpenCV ขยาย:</b> ${data.healed_resolution}</p>
+                    `;
+                    document.getElementById('autoResultBox').classList.remove('hidden');
+                    document.getElementById('autoResultBox').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert(data.detail || 'เกิดข้อผิดพลาดในการประมวลผล');
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>ประมวลผลด้วย OpenCV (ใช้งานฟรี)</span>';
+            }
+        }
+
+        // --- MODE 2: CANVAS STUDIO ENGINE ---
+        const fileInput = document.getElementById('fileInput');
+        const changeFileInput = document.getElementById('changeFileInput');
+        const dropZone = document.getElementById('dropZone');
+        const uploadSection = document.getElementById('uploadSection');
+        const editorSection = document.getElementById('editorSection');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const ctx = mainCanvas.getContext('2d');
+
+        let rawImage = new Image();
+        let currentTool = 'move';
+        let rotationAngle = 0;
+        let scaleH = 1;
+        let scaleV = 1;
+        let isDrawing = false;
+
+        let historyStack = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 25;
+
+        function pushHistory() {
+            if (historyIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyIndex + 1);
+            }
+            const snapshot = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+            historyStack.push(snapshot);
+            if (historyStack.length > MAX_HISTORY) {
+                historyStack.shift();
+            } else {
+                historyIndex++;
+            }
+            updateUndoRedoUI();
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                ctx.putImageData(historyStack[historyIndex], 0, 0);
+                updateUndoRedoUI();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                ctx.putImageData(historyStack[historyIndex], 0, 0);
+                updateUndoRedoUI();
+            }
+        }
+
+        function updateUndoRedoUI() {
+            const undoBtn = document.getElementById('undoBtn');
+            const redoBtn = document.getElementById('redoBtn');
+            if (undoBtn) undoBtn.disabled = (historyIndex <= 0);
+            if (redoBtn) redoBtn.disabled = (historyIndex >= historyStack.length - 1);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) redo(); else undo();
+                e.preventDefault();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                redo();
+                e.preventDefault();
+            }
+        });
+
+        dropZone.onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            if (e.target.files.length) loadImageFromFile(e.target.files[0]);
+        };
+
+        function triggerChangeImage() { changeFileInput.click(); }
+
+        changeFileInput.onchange = (e) => {
+            if (e.target.files.length) loadImageFromFile(e.target.files[0]);
+        };
+
+        function loadImageFromFile(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                rawImage = new Image();
+                rawImage.onload = () => {
+                    initCanvas();
+                    uploadSection.classList.add('hidden');
+                    editorSection.classList.remove('hidden');
+                    document.getElementById('resultBox').classList.add('hidden');
+                };
+                rawImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function initCanvas() {
+            mainCanvas.width = rawImage.width;
+            mainCanvas.height = rawImage.height;
+            rotationAngle = 0;
+            scaleH = 1;
+            scaleV = 1;
+            historyStack = [];
+            historyIndex = -1;
+            resetSliders();
+            renderCanvas();
+            pushHistory();
+        }
+
+        function resetSliders() {
+            document.getElementById('brightRange').value = 0;
+            document.getElementById('contrastRange').value = 0;
+            document.getElementById('saturateRange').value = 0;
+            document.getElementById('brightVal').innerText = '0';
+            document.getElementById('contrastVal').innerText = '0';
+            document.getElementById('saturateVal').innerText = '0';
+        }
+
+        function resetEditor() { initCanvas(); }
+
+        function setTool(tool) {
+            currentTool = tool;
+            const toolMoveBtn = document.getElementById('toolMoveBtn');
+            const toolWandBtn = document.getElementById('toolWandBtn');
+            const toolEraserBtn = document.getElementById('toolEraserBtn');
+            const wandControls = document.getElementById('wandControls');
+            const eraserControls = document.getElementById('eraserControls');
+            const eraserTip = document.getElementById('eraserTip');
+            const wandTip = document.getElementById('wandTip');
+
+            toolMoveBtn.className = "py-2 px-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1 transition";
+            toolWandBtn.className = "py-2 px-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1 transition";
+            toolEraserBtn.className = "py-2 px-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1 transition";
+            
+            wandControls.classList.add('hidden');
+            eraserControls.classList.add('hidden');
+            eraserTip.classList.add('hidden');
+            wandTip.classList.add('hidden');
+
+            if (tool === 'wand') {
+                toolWandBtn.className = "py-2 px-2 rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 font-bold text-xs flex items-center justify-center gap-1 transition";
+                wandControls.classList.remove('hidden');
+                wandTip.classList.remove('hidden');
+            } else if (tool === 'eraser') {
+                toolEraserBtn.className = "py-2 px-2 rounded-xl border border-amber-500 bg-amber-600/20 text-amber-300 font-bold text-xs flex items-center justify-center gap-1 transition";
+                eraserControls.classList.remove('hidden');
+                eraserTip.classList.remove('hidden');
+            } else {
+                toolMoveBtn.className = "py-2 px-2 rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 font-bold text-xs flex items-center justify-center gap-1 transition";
+            }
+        }
+
+        function rotateImage(deg) { rotationAngle = (rotationAngle + deg) % 360; renderCanvas(); pushHistory(); }
+        function flipImage(dir) { if (dir === 'h') scaleH *= -1; if (dir === 'v') scaleV *= -1; renderCanvas(); pushHistory(); }
+
+        function applyFilters() {
+            document.getElementById('brightVal').innerText = document.getElementById('brightRange').value;
+            document.getElementById('contrastVal').innerText = document.getElementById('contrastRange').value;
+            document.getElementById('saturateVal').innerText = document.getElementById('saturateRange').value;
+            renderCanvas();
+        }
+
+        function renderCanvas() {
+            const b = parseInt(document.getElementById('brightRange').value) + 100;
+            const c = parseInt(document.getElementById('contrastRange').value) + 100;
+            const s = parseInt(document.getElementById('saturateRange').value) + 100;
+
+            ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+
+            ctx.save();
+            ctx.translate(mainCanvas.width / 2, mainCanvas.height / 2);
+            ctx.rotate((rotationAngle * Math.PI) / 180);
+            ctx.scale(scaleH, scaleV);
+            ctx.drawImage(rawImage, -rawImage.width / 2, -rawImage.height / 2);
+            ctx.restore();
+        }
+
+        function getCanvasCoords(e) {
+            const rect = mainCanvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (mainCanvas.width / rect.width),
+                y: (e.clientY - rect.top) * (mainCanvas.height / rect.height)
+            };
+        }
+
+        mainCanvas.addEventListener('mousedown', (e) => { 
+            if (currentTool === 'eraser') { 
+                isDrawing = true; 
+                eraseAt(e); 
+            } else if (currentTool === 'wand') {
+                const coords = getCanvasCoords(e);
+                const tol = parseInt(document.getElementById('toleranceRange').value) || 30;
+                magicWandErase(coords.x, coords.y, tol);
+            }
+        });
+
+        mainCanvas.addEventListener('mousemove', (e) => { 
+            if (isDrawing && currentTool === 'eraser') eraseAt(e); 
+        });
+
+        window.addEventListener('mouseup', () => { 
+            if (isDrawing) {
+                isDrawing = false; 
+                pushHistory();
+            }
+        });
+
+        function eraseAt(e) {
+            const coords = getCanvasCoords(e);
+            const brushSize = parseInt(document.getElementById('brushSize').value);
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(coords.x, coords.y, brushSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function magicWandErase(startX, startY, tolerance) {
+            const width = mainCanvas.width;
+            const height = mainCanvas.height;
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+
+            startX = Math.floor(startX);
+            startY = Math.floor(startY);
+
+            if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
+
+            const startIdx = (startY * width + startX) * 4;
+            const startR = data[startIdx];
+            const startG = data[startIdx + 1];
+            const startB = data[startIdx + 2];
+            const startA = data[startIdx + 3];
+
+            if (startA === 0) return;
+
+            const tolSq = tolerance * tolerance * 3;
+
+            function colorMatch(idx) {
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+                const a = data[idx + 3];
+                if (a === 0) return false;
+                const diffSq = (r - startR) ** 2 + (g - startG) ** 2 + (b - startB) ** 2;
+                return diffSq <= tolSq;
+            }
+
+            const stack = [[startX, startY]];
+            const visited = new Uint8Array(width * height);
+            visited[startY * width + startX] = 1;
+
+            while (stack.length > 0) {
+                const [x, y] = stack.pop();
+                const idx = (y * width + x) * 4;
+
+                data[idx + 3] = 0;
+
+                const neighbors = [
+                    [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
+                ];
+
+                for (let i = 0; i < 4; i++) {
+                    const nx = neighbors[i][0];
+                    const ny = neighbors[i][1];
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        const nPos = ny * width + nx;
+                        if (!visited[nPos]) {
+                            visited[nPos] = 1;
+                            if (colorMatch(nPos * 4)) {
+                                stack.push([nx, ny]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            pushHistory();
+        }
+
+        async function exportToPrintEngine() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('กรุณาเข้าสู่ระบบก่อนแต่งรูป');
+                authModal.classList.remove('hidden');
+                return;
+            }
+
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>กำลังประมวลผลผ่าน OpenCV...</span>';
+
+            mainCanvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'edited_print.png');
+                formData.append('adjust_color', 'false');
+
+                try {
+                    const res = await fetch('/heal', { 
+                        method: 'POST', 
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData 
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.status === 'success') {
+                        document.getElementById('downloadPngBtn').href = data.preview_url;
+                        document.getElementById('downloadPdfBtn').href = data.pdf_url;
+                        document.getElementById('resultBox').classList.remove('hidden');
+                        document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth' });
+                        checkAuth();
+                    } else {
+                        alert(data.detail || 'เกิดข้อผิดพลาดในการประมวลผล');
+                    }
+                } catch (err) {
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+                } finally {
+                    exportBtn.disabled = false;
+                    exportBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>ประมวลผลรูปภาพ (หัก 1 Credit)</span>';
+                }
+            }, 'image/png');
+        }
+    </script>
+</body>
+</html>
